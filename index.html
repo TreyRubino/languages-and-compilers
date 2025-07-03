@@ -6,7 +6,7 @@
   <style>
     body {
       font-family: sans-serif;
-      max-width: 800px;
+      max-width: 900px;
       margin: 2rem auto;
       padding: 0 1rem;
       background: #f9f9f9;
@@ -14,23 +14,22 @@
     }
     h1 {
       font-size: 1.8rem;
-      margin-bottom: 0.5rem;
     }
     p {
       color: #666;
       margin-bottom: 2rem;
     }
     ul {
-      padding: 0;
       list-style: none;
+      padding-left: 1rem;
     }
     li {
-      margin-bottom: 1.2rem;
+      margin: 0.3rem 0;
     }
     a {
       color: #007acc;
       text-decoration: none;
-      font-weight: bold;
+      font-weight: 500;
     }
     a:hover {
       text-decoration: underline;
@@ -43,38 +42,50 @@
 </head>
 <body>
   <h1>Languages and Compilers</h1>
-  <p>This index automatically lists all top-level folders in the repo.</p>
-
-  <ul id="project-list"></ul>
+  <p>This page shows a live recursive view of all folders and files in the repo.</p>
+  <ul id="file-tree"></ul>
   <div id="error" class="error"></div>
-
   <script>
-    const username = "TreyRubino";     
-    const repo = "languages-and-compilers";       
-    const branch = "main";                       
-    const apiURL = `https://api.github.com/repos/${username}/${repo}/contents`;
+    const username = "TreyRubino";
+    const repo = "languages-and-compilers";
+    const branch = "main";
+    const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
 
-    fetch(apiURL)
-      .then(response => {
-        if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
-        return response.json();
-      })
-      .then(data => {
-        const list = document.getElementById("project-list");
-        data
-          .filter(item => item.type === "dir")
-          .forEach(dir => {
+    const buildTree = (path = "", parentUl) => {
+      const url = path ? `${apiBase}/${path}` : apiBase;
+
+      fetch(url)
+        .then(response => {
+          if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          data.forEach(item => {
             const li = document.createElement("li");
             const link = document.createElement("a");
-            link.href = `${dir.name}/`;
-            link.textContent = dir.name;
-            li.appendChild(link);
-            list.appendChild(li);
+            link.textContent = item.name;
+
+            if (item.type === "dir") {
+              link.href = `#`;
+              li.appendChild(link);
+              const subUl = document.createElement("ul");
+              li.appendChild(subUl);
+              parentUl.appendChild(li);
+              buildTree(item.path, subUl);
+            } else if (item.type === "file") {
+              link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${item.path}`;
+              link.target = "_blank";
+              li.appendChild(link);
+              parentUl.appendChild(li);
+            }
           });
-      })
-      .catch(err => {
-        document.getElementById("error").textContent = "Error loading project list: " + err.message;
-      });
+        })
+        .catch(err => {
+          document.getElementById("error").textContent = "Error loading repo structure: " + err.message;
+        });
+    };
+
+    buildTree("", document.getElementById("file-tree"));
   </script>
 </body>
 </html>
