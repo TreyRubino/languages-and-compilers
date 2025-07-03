@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Languages and Compilers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Google Material Icons CDN -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
     :root {
@@ -23,7 +24,7 @@
         --icon-color: #8b949e;
       }
     }
-
+    * { box-sizing: border-box; }
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -32,25 +33,17 @@
       max-width: 960px;
       margin: 0 auto;
     }
-
     h1 {
       font-size: 2rem;
       font-weight: 600;
       margin-bottom: 0.25rem;
     }
-
     p {
       font-size: 1rem;
       margin-bottom: 2rem;
       color: var(--text);
     }
-
-    ul {
-      list-style: none;
-      padding-left: 0;
-      margin: 0;
-    }
-
+    ul { list-style: none; padding-left: 0; margin: 0; }
     li {
       display: flex;
       align-items: center;
@@ -59,11 +52,7 @@
       cursor: default;
       transition: background 0.2s ease;
     }
-
-    li:hover {
-      background-color: var(--hover-bg);
-    }
-
+    li:hover { background: var(--hover-bg); }
     .folder span, .file a {
       display: flex;
       align-items: center;
@@ -72,40 +61,18 @@
       text-decoration: none;
       font-weight: 500;
       width: 100%;
-      cursor: pointer;
     }
-
-    .file a {
-      font-weight: 400;
-    }
-
-    .file a:hover {
-      text-decoration: underline;
-    }
-
-    .material-icons {
-      color: var(--icon-color);
-      transition: transform 0.2s ease;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    ul ul {
-      padding-left: 1.5rem;
-    }
-
-    .error {
-      margin-top: 2rem;
-      font-weight: 500;
-      color: crimson;
-    }
+    .file a { font-weight: 400; }
+    .file a:hover { text-decoration: underline; }
+    .material-icons { color: var(--icon-color); }
+    .hidden { display: none; }
+    ul ul { padding-left: 1.5rem; }
+    .error { margin-top: 2rem; font-weight: 500; color: crimson; }
   </style>
 </head>
 <body>
   <h1>Languages and Compilers</h1>
-  <p>Trey Rubino</p>
+  <p>Click a folder to expand its contents. Files open in a new tab.</p>
   <ul id="file-tree"></ul>
   <div id="error" class="error"></div>
 
@@ -121,22 +88,19 @@
 
       const span = document.createElement("span");
       span.innerHTML = `<span class="material-icons">folder</span>${dir.name}`;
-      const icon = span.querySelector(".material-icons");
+      li.appendChild(span);
 
       const subUl = document.createElement("ul");
       subUl.classList.add("hidden");
+      li.appendChild(subUl);
 
       span.addEventListener("click", () => {
-        const isOpen = !subUl.classList.contains("hidden");
-        if (!isOpen && subUl.children.length === 0) {
+        if (subUl.classList.contains("hidden") && subUl.children.length === 0) {
           buildTree(dir.path, subUl, depth + 1);
         }
         subUl.classList.toggle("hidden");
-        icon.textContent = subUl.classList.contains("hidden") ? "folder" : "folder_open";
       });
 
-      li.appendChild(span);
-      li.appendChild(subUl);
       return li;
     };
 
