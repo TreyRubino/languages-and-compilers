@@ -1,137 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Languages and Compilers</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Languages and Compilers</title>
   <style>
     :root {
-      --bg: #fff;
-      --text: #1a1a1a;
+      --bg: #ffffff;
+      --text: #1f1f1f;
       --accent: #0969da;
+      --folder-icon: "▶";
+      --folder-open-icon: "▼";
+      --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --hover-bg: #f3f4f6;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --icon-color: #6e7781;
+      --border-color: #e5e7eb;
     }
+
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #1e1e1e;
-        --text: #f0f0f0;
+        --text: #e2e2e2;
         --accent: #58a6ff;
         --hover-bg: #2a2a2a;
-        --icon-color: #8b949e;
+        --border-color: #333;
       }
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: var(--font);
       background: var(--bg);
       color: var(--text);
+      margin: 0 auto;
       padding: 2rem 1.5rem;
       max-width: 960px;
-      margin: auto;
       line-height: 1.6;
     }
-    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
-    p { font-size: 1rem; color: var(--text); margin-bottom: 2rem; }
-    ul { list-style: none; padding-left: 0; margin: 0; }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #555;
+      margin-bottom: 2rem;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 1rem;
+      margin: 0;
+    }
+
     li {
-      display: flex;
-      align-items: center;
+      margin: 0.2rem 0;
       padding: 0.35rem 0.5rem;
-      margin-bottom: 0.2rem;
       border-radius: 4px;
-      transition: background 0.2s;
+      transition: background 0.2s ease;
     }
-    li:hover { background: var(--hover-bg); }
-    .folder-button, .file-link {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      width: 100%;
-      text-decoration: none;
-      color: var(--accent);
-      font-weight: 500;
+
+    li:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .folder > span {
       cursor: pointer;
+      font-weight: 500;
+      color: var(--accent);
+      user-select: none;
     }
-    .file-link { font-weight: 400; }
-    .file-link:hover { text-decoration: underline; }
-    .icon {
-      width: 16px;
-      height: 16px;
-      fill: var(--icon-color);
-      flex-shrink: 0;
+
+    .folder > span::before {
+      content: var(--folder-icon);
+      display: inline-block;
+      margin-right: 6px;
+      transition: transform 0.2s ease;
     }
-    .hidden { display: none; }
-    ul ul { padding-left: 1.5rem; }
-    .error { margin-top: 2rem; font-weight: 500; color: crimson; }
+
+    .folder.open > span::before {
+      content: var(--folder-open-icon);
+    }
+
+    .file a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 400;
+    }
+
+    .file a:hover {
+      text-decoration: underline;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      margin-top: 2rem;
+      font-weight: 500;
+      color: crimson;
+    }
   </style>
 </head>
 <body>
+  <h1>Languages and Compilers</h1>
+  <p>Trey Rubino</p>
 
-<h1>Languages and Compilers</h1>
-<p>Trey Rubino</p>
-<ul id="file-tree"></ul>
-<div id="error" class="error"></div>
+  <ul id="file-tree"></ul>
+  <div id="error" class="error"></div>
 
-<script>
-const username = "TreyRubino",
-      repo = "languages-and-compilers",
-      branch = "main",
-      apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
+  <script>
+    const username = "TreyRubino";
+    const repo = "languages-and-compilers";
+    const branch = "main";
+    const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
 
-const folderSVG = `<svg class="icon" viewBox="0 0 16 16"><path d="M1 4a2 2 0 012-2h3.5l1 1h5.5a2 2 0 012 2v1h-14V4z"/><path d="M1 7h14v5a2 2 0 01-2 2H3a2 2 0 01-2-2V7z"/></svg>`;
-const folderOpenSVG = `<svg class="icon" viewBox="0 0 16 16"><path d="M1 4a2 2 0 012-2h3.5l-1 1H3a2 2 0 00-2 2v1h14V4a2 2 0 00-2-2h-5l-1-1H3z"/><path d="M1 7h14v5a2 2 0 01-2 2H3a2 2 0 01-2-2V7z"/></svg>`;
-const fileSVG = `<svg class="icon" viewBox="0 0 16 16"><path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/></svg>`;
+    const createFolderItem = (dir, depth) => {
+      const li = document.createElement("li");
+      li.classList.add("folder");
 
-function createFolderItem(dir, depth) {
-  const li = document.createElement("li");
-  const btn = document.createElement("button");
-  btn.innerHTML = folderSVG + dir.name;
-  btn.className = "folder-button";
-  li.appendChild(btn);
+      const label = document.createElement("span");
+      label.textContent = dir.name;
+      li.appendChild(label);
 
-  const subUl = document.createElement("ul");
-  subUl.classList.add("hidden");
-  li.appendChild(subUl);
+      const subUl = document.createElement("ul");
+      subUl.classList.add("hidden");
+      li.appendChild(subUl);
 
-  btn.addEventListener("click", () => {
-    const open = !subUl.classList.contains("hidden");
-    btn.innerHTML = (open ? folderSVG : folderOpenSVG) + dir.name;
-    if (open === false && subUl.children.length === 0) {
-      buildTree(dir.path, subUl, depth + 1);
-    }
-    subUl.classList.toggle("hidden");
-  });
-  return li;
-}
-
-function createFileItem(file) {
-  const li = document.createElement("li");
-  const link = document.createElement("a");
-  link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
-  link.target = "_blank";
-  link.innerHTML = fileSVG + file.name;
-  link.className = "file-link";
-  li.appendChild(link);
-  return li;
-}
-
-function buildTree(path, parentUl, depth) {
-  const url = path ? `${apiBase}/${path}` : apiBase;
-  fetch(url)
-    .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
-    .then(data => {
-      data.forEach(item => {
-        if (item.type === "dir") parentUl.appendChild(createFolderItem(item, depth));
-        else if (depth > 0 && item.type === "file") parentUl.appendChild(createFileItem(item));
+      label.addEventListener("click", () => {
+        const isOpen = !subUl.classList.contains("hidden");
+        li.classList.toggle("open", !isOpen);
+        subUl.classList.toggle("hidden", isOpen);
+        if (!isOpen && subUl.children.length === 0) {
+          buildTree(dir.path, subUl, depth + 1);
+        }
       });
-    })
-    .catch(e => document.getElementById("error").textContent = e);
-}
 
-buildTree("", document.getElementById("file-tree"), 0);
-</script>
+      return li;
+    };
 
+    const createFileItem = (file) => {
+      const li = document.createElement("li");
+      li.classList.add("file");
+
+      const link = document.createElement("a");
+      link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
+      link.textContent = file.name;
+      link.target = "_blank";
+
+      li.appendChild(link);
+      return li;
+    };
+
+    const buildTree = (path, parentUl, depth) => {
+      const url = path ? `${apiBase}/${path}` : apiBase;
+
+      fetch(url)
+        .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
+        .then(data => {
+          data.forEach(item => {
+            if (item.type === "dir") {
+              const folder = createFolderItem(item, depth);
+              parentUl.appendChild(folder);
+            } else if (item.type === "file" && depth > 0) {
+              const file = createFileItem(item);
+              parentUl.appendChild(file);
+            }
+          });
+        })
+        .catch(err => {
+          document.getElementById("error").textContent = "Error: " + err;
+        });
+    };
+
+    buildTree("", document.getElementById("file-tree"), 0);
+  </script>
 </body>
 </html>
