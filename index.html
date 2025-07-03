@@ -2,15 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Languages and Compilers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Languages and Compilers</title>
   <style>
     :root {
-      --bg: #f9f9f9;
-      --text: #333;
-      --accent: #2e86de;
-      --hover: #e8f0fe;
-      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --bg: #ffffff;
+      --text: #1f1f1f;
+      --accent: #0969da;
+      --folder-icon: "▶";
+      --folder-open-icon: "▼";
+      --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --hover-bg: #f3f4f6;
+      --border-color: #e5e7eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1e;
+        --text: #e2e2e2;
+        --accent: #58a6ff;
+        --hover-bg: #2a2a2a;
+        --border-color: #333;
+      }
     }
 
     * {
@@ -21,20 +34,21 @@
       font-family: var(--font);
       background: var(--bg);
       color: var(--text);
-      margin: 0;
-      padding: 2rem 1rem;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
       max-width: 960px;
-      margin-inline: auto;
+      line-height: 1.6;
     }
 
     h1 {
-      font-size: 2rem;
-      margin-bottom: 0.2rem;
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
     }
 
     p {
       font-size: 1rem;
-      color: #666;
+      color: #555;
       margin-bottom: 2rem;
     }
 
@@ -45,28 +59,38 @@
     }
 
     li {
-      margin: 0.3rem 0;
-      padding: 0.2rem 0.4rem;
-      border-radius: 5px;
-      transition: background 0.2s;
+      margin: 0.2rem 0;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.2s ease;
     }
 
     li:hover {
-      background: var(--hover);
+      background-color: var(--hover-bg);
     }
 
     .folder > span {
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 500;
       color: var(--accent);
+      user-select: none;
+    }
+
+    .folder > span::before {
+      content: var(--folder-icon);
       display: inline-block;
-      transition: transform 0.3s ease;
+      margin-right: 6px;
+      transition: transform 0.2s ease;
+    }
+
+    .folder.open > span::before {
+      content: var(--folder-open-icon);
     }
 
     .file a {
-      color: #007acc;
+      color: var(--accent);
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 400;
     }
 
     .file a:hover {
@@ -78,32 +102,15 @@
     }
 
     .error {
-      color: red;
       margin-top: 2rem;
-      font-weight: 600;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1e1e1e;
-        --text: #f5f5f5;
-        --accent: #62a8ea;
-        --hover: #2a2a2a;
-      }
-
-      body {
-        color: var(--text);
-        background: var(--bg);
-      }
-
-      .file a {
-        color: var(--accent);
-      }
+      font-weight: 500;
+      color: crimson;
     }
   </style>
 </head>
 <body>
   <h1>Languages and Compilers</h1>
+  <p>By Trey Rubino</p>
 
   <ul id="file-tree"></ul>
   <div id="error" class="error"></div>
@@ -119,7 +126,7 @@
       li.classList.add("folder");
 
       const label = document.createElement("span");
-      label.textContent = "📁 " + dir.name;
+      label.textContent = dir.name;
       li.appendChild(label);
 
       const subUl = document.createElement("ul");
@@ -127,13 +134,11 @@
       li.appendChild(subUl);
 
       label.addEventListener("click", () => {
-        if (subUl.classList.contains("hidden")) {
-          if (subUl.children.length === 0) {
-            buildTree(dir.path, subUl, depth + 1);
-          }
-          subUl.classList.remove("hidden");
-        } else {
-          subUl.classList.add("hidden");
+        const isOpen = !subUl.classList.contains("hidden");
+        li.classList.toggle("open", !isOpen);
+        subUl.classList.toggle("hidden", isOpen);
+        if (!isOpen && subUl.children.length === 0) {
+          buildTree(dir.path, subUl, depth + 1);
         }
       });
 
@@ -146,7 +151,7 @@
 
       const link = document.createElement("a");
       link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
-      link.textContent = "📄 " + file.name;
+      link.textContent = file.name;
       link.target = "_blank";
 
       li.appendChild(link);
@@ -157,23 +162,20 @@
       const url = path ? `${apiBase}/${path}` : apiBase;
 
       fetch(url)
-        .then(response => {
-          if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
-          return response.json();
-        })
+        .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
         .then(data => {
           data.forEach(item => {
             if (item.type === "dir") {
-              const folderItem = createFolderItem(item, depth);
-              parentUl.appendChild(folderItem);
+              const folder = createFolderItem(item, depth);
+              parentUl.appendChild(folder);
             } else if (item.type === "file" && depth > 0) {
-              const fileItem = createFileItem(item);
-              parentUl.appendChild(fileItem);
+              const file = createFileItem(item);
+              parentUl.appendChild(file);
             }
           });
         })
         .catch(err => {
-          document.getElementById("error").textContent = "Error loading repo: " + err.message;
+          document.getElementById("error").textContent = "Error: " + err;
         });
     };
 
