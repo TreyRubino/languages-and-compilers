@@ -24,15 +24,23 @@
       padding-left: 1rem;
     }
     li {
-      margin: 0.3rem 0;
+      margin: 0.2rem 0;
     }
-    a {
+    .folder > span {
+      cursor: pointer;
+      font-weight: 600;
+      color: #2e86de;
+    }
+    .file a {
       color: #007acc;
       text-decoration: none;
       font-weight: 500;
     }
-    a:hover {
+    .file a:hover {
       text-decoration: underline;
+    }
+    .hidden {
+      display: none;
     }
     .error {
       color: red;
@@ -42,16 +50,57 @@
 </head>
 <body>
   <h1>Languages and Compilers</h1>
-  <p>This page shows a live recursive view of all folders and files in the repo.</p>
+  <p>Click a folder to expand its contents.</p>
+
   <ul id="file-tree"></ul>
   <div id="error" class="error"></div>
+
   <script>
     const username = "TreyRubino";
     const repo = "languages-and-compilers";
     const branch = "main";
     const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
 
-    const buildTree = (path = "", parentUl) => {
+    const createFolderItem = (dir) => {
+      const li = document.createElement("li");
+      li.classList.add("folder");
+
+      const label = document.createElement("span");
+      label.textContent = "📁 " + dir.name;
+      li.appendChild(label);
+
+      const subUl = document.createElement("ul");
+      subUl.classList.add("hidden");
+      li.appendChild(subUl);
+
+      label.addEventListener("click", () => {
+        if (subUl.classList.contains("hidden")) {
+          if (subUl.children.length === 0) {
+            buildTree(dir.path, subUl, false);
+          }
+          subUl.classList.remove("hidden");
+        } else {
+          subUl.classList.add("hidden");
+        }
+      });
+
+      return li;
+    };
+
+    const createFileItem = (file) => {
+      const li = document.createElement("li");
+      li.classList.add("file");
+
+      const link = document.createElement("a");
+      link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
+      link.textContent = "📄 " + file.name;
+      link.target = "_blank";
+
+      li.appendChild(link);
+      return li;
+    };
+
+    const buildTree = (path, parentUl, allowFiles = true) => {
       const url = path ? `${apiBase}/${path}` : apiBase;
 
       fetch(url)
@@ -61,31 +110,21 @@
         })
         .then(data => {
           data.forEach(item => {
-            const li = document.createElement("li");
-            const link = document.createElement("a");
-            link.textContent = item.name;
-
             if (item.type === "dir") {
-              link.href = `#`;
-              li.appendChild(link);
-              const subUl = document.createElement("ul");
-              li.appendChild(subUl);
-              parentUl.appendChild(li);
-              buildTree(item.path, subUl);
-            } else if (item.type === "file") {
-              link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${item.path}`;
-              link.target = "_blank";
-              li.appendChild(link);
-              parentUl.appendChild(li);
+              const folderItem = createFolderItem(item);
+              parentUl.appendChild(folderItem);
+            } else if (item.type === "file" && allowFiles) {
+              const fileItem = createFileItem(item);
+              parentUl.appendChild(fileItem);
             }
           });
         })
         .catch(err => {
-          document.getElementById("error").textContent = "Error loading repo structure: " + err.message;
+          document.getElementById("error").textContent = "Error: " + err.message;
         });
     };
 
-    buildTree("", document.getElementById("file-tree"));
+    buildTree("", document.getElementById("file-tree"), false);
   </script>
 </body>
 </html>
