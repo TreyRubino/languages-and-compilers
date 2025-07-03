@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Languages and Compilers</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      color: #666;
+      margin-bottom: 2rem;
+    }
+    ul {
+      padding: 0;
+      list-style: none;
+    }
+    li {
+      margin-bottom: 1.2rem;
+    }
+    a {
+      color: #007acc;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .error {
+      color: red;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Languages and Compilers</h1>
+  <p>This index automatically lists all top-level folders in the repo.</p>
+
+  <ul id="project-list"></ul>
+  <div id="error" class="error"></div>
+
+  <script>
+    const username = "TreyRubino";     
+    const repo = "languages-and-compilers";       
+    const branch = "main";                       
+    const apiURL = `https://api.github.com/repos/${username}/${repo}/contents`;
+
+    fetch(apiURL)
+      .then(response => {
+        if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        const list = document.getElementById("project-list");
+        data
+          .filter(item => item.type === "dir")
+          .forEach(dir => {
+            const li = document.createElement("li");
+            const link = document.createElement("a");
+            link.href = `${dir.name}/`;
+            link.textContent = dir.name;
+            li.appendChild(link);
+            list.appendChild(li);
+          });
+      })
+      .catch(err => {
+        document.getElementById("error").textContent = "Error loading project list: " + err.message;
+      });
+  </script>
+</body>
+</html>
