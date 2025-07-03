@@ -2,27 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Languages and Compilers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
       --bg: #ffffff;
-      --text: #1f1f1f;
+      --text: #1a1a1a;
       --accent: #0969da;
-      --folder-icon: "▶";
-      --folder-open-icon: "▼";
-      --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --hover-bg: #f3f4f6;
-      --border-color: #e5e7eb;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --icon-color: #6e7781;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #1e1e1e;
-        --text: #e2e2e2;
+        --text: #f0f0f0;
         --accent: #58a6ff;
         --hover-bg: #2a2a2a;
-        --border-color: #333;
+        --icon-color: #8b949e;
       }
     }
 
@@ -32,29 +30,29 @@
 
     body {
       font-family: var(--font);
-      background: var(--bg);
+      background-color: var(--bg);
       color: var(--text);
+      max-width: 960px;
       margin: 0 auto;
       padding: 2rem 1.5rem;
-      max-width: 960px;
       line-height: 1.6;
     }
 
     h1 {
-      font-size: 1.8rem;
+      font-size: 2rem;
       font-weight: 600;
       margin-bottom: 0.25rem;
     }
 
     p {
       font-size: 1rem;
-      color: #555;
       margin-bottom: 2rem;
+      color: var(--text);
     }
 
     ul {
       list-style: none;
-      padding-left: 1rem;
+      padding-left: 0;
       margin: 0;
     }
 
@@ -69,27 +67,18 @@
       background-color: var(--hover-bg);
     }
 
-    .folder > span {
-      cursor: pointer;
-      font-weight: 500;
+    .folder span,
+    .file a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       color: var(--accent);
-      user-select: none;
-    }
-
-    .folder > span::before {
-      content: var(--folder-icon);
-      display: inline-block;
-      margin-right: 6px;
-      transition: transform 0.2s ease;
-    }
-
-    .folder.open > span::before {
-      content: var(--folder-open-icon);
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
     }
 
     .file a {
-      color: var(--accent);
-      text-decoration: none;
       font-weight: 400;
     }
 
@@ -101,10 +90,22 @@
       display: none;
     }
 
+    .icon {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      fill: var(--icon-color);
+      flex-shrink: 0;
+    }
+
     .error {
-      margin-top: 2rem;
-      font-weight: 500;
       color: crimson;
+      font-weight: 500;
+      margin-top: 2rem;
+    }
+
+    ul ul {
+      padding-left: 1rem;
     }
   </style>
 </head>
@@ -121,27 +122,38 @@
     const branch = "main";
     const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
 
+    const folderSVG = `
+      <svg class="icon" viewBox="0 0 16 16" version="1.1">
+        <path d="M1.75 3A.75.75 0 0 0 1 3.75v8.5c0 .414.336.75.75.75h12.5a.75.75 0 0 0 .75-.75V6.002a.75.75 0 0 0-.189-.498l-2.5-3A.75.75 0 0 0 11.75 2H2.5a.75.75 0 0 0-.75.75V3h0Zm1.5-.25h8.69l2 2.4V12H3.25V2.75Z"></path>
+      </svg>
+    `;
+
+    const fileSVG = `
+      <svg class="icon" viewBox="0 0 16 16" version="1.1">
+        <path d="M4 1.75A.75.75 0 0 1 4.75 1h6.5c.2 0 .39.08.53.22l2 2a.75.75 0 0 1 .22.53v10.5a.75.75 0 0 1-.75.75H4.75A.75.75 0 0 1 4 14.75V1.75Zm1.5.75v11h8V4.56L10.94 2.5H5.5Z"></path>
+      </svg>
+    `;
+
     const createFolderItem = (dir, depth) => {
       const li = document.createElement("li");
       li.classList.add("folder");
 
       const label = document.createElement("span");
-      label.textContent = dir.name;
-      li.appendChild(label);
+      label.innerHTML = folderSVG + dir.name;
 
       const subUl = document.createElement("ul");
       subUl.classList.add("hidden");
-      li.appendChild(subUl);
 
       label.addEventListener("click", () => {
         const isOpen = !subUl.classList.contains("hidden");
-        li.classList.toggle("open", !isOpen);
-        subUl.classList.toggle("hidden", isOpen);
         if (!isOpen && subUl.children.length === 0) {
           buildTree(dir.path, subUl, depth + 1);
         }
+        subUl.classList.toggle("hidden");
       });
 
+      li.appendChild(label);
+      li.appendChild(subUl);
       return li;
     };
 
@@ -151,7 +163,7 @@
 
       const link = document.createElement("a");
       link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
-      link.textContent = file.name;
+      link.innerHTML = fileSVG + file.name;
       link.target = "_blank";
 
       li.appendChild(link);
