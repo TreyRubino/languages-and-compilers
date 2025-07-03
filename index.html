@@ -1,56 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Languages and Compilers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    :root {
+      --bg: #f9f9f9;
+      --text: #333;
+      --accent: #2e86de;
+      --hover: #e8f0fe;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: sans-serif;
-      max-width: 900px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      background: #f9f9f9;
-      color: #333;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem 1rem;
+      max-width: 960px;
+      margin-inline: auto;
     }
+
     h1 {
-      font-size: 1.8rem;
+      font-size: 2rem;
+      margin-bottom: 0.2rem;
     }
+
     p {
+      font-size: 1rem;
       color: #666;
       margin-bottom: 2rem;
     }
+
     ul {
       list-style: none;
       padding-left: 1rem;
+      margin: 0;
     }
+
     li {
-      margin: 0.2rem 0;
+      margin: 0.3rem 0;
+      padding: 0.2rem 0.4rem;
+      border-radius: 5px;
+      transition: background 0.2s;
     }
+
+    li:hover {
+      background: var(--hover);
+    }
+
     .folder > span {
       cursor: pointer;
       font-weight: 600;
-      color: #2e86de;
+      color: var(--accent);
+      display: inline-block;
+      transition: transform 0.3s ease;
     }
+
     .file a {
       color: #007acc;
       text-decoration: none;
       font-weight: 500;
     }
+
     .file a:hover {
       text-decoration: underline;
     }
+
     .hidden {
       display: none;
     }
+
     .error {
       color: red;
       margin-top: 2rem;
+      font-weight: 600;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1e;
+        --text: #f5f5f5;
+        --accent: #62a8ea;
+        --hover: #2a2a2a;
+      }
+
+      body {
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      .file a {
+        color: var(--accent);
+      }
     }
   </style>
 </head>
 <body>
   <h1>Languages and Compilers</h1>
-  <p>Click a folder to expand its contents.</p>
 
   <ul id="file-tree"></ul>
   <div id="error" class="error"></div>
@@ -61,7 +114,7 @@
     const branch = "main";
     const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
 
-    const createFolderItem = (dir) => {
+    const createFolderItem = (dir, depth) => {
       const li = document.createElement("li");
       li.classList.add("folder");
 
@@ -76,7 +129,7 @@
       label.addEventListener("click", () => {
         if (subUl.classList.contains("hidden")) {
           if (subUl.children.length === 0) {
-            buildTree(dir.path, subUl, false);
+            buildTree(dir.path, subUl, depth + 1);
           }
           subUl.classList.remove("hidden");
         } else {
@@ -100,7 +153,7 @@
       return li;
     };
 
-    const buildTree = (path, parentUl, allowFiles = true) => {
+    const buildTree = (path, parentUl, depth) => {
       const url = path ? `${apiBase}/${path}` : apiBase;
 
       fetch(url)
@@ -111,20 +164,20 @@
         .then(data => {
           data.forEach(item => {
             if (item.type === "dir") {
-              const folderItem = createFolderItem(item);
+              const folderItem = createFolderItem(item, depth);
               parentUl.appendChild(folderItem);
-            } else if (item.type === "file" && allowFiles) {
+            } else if (item.type === "file" && depth > 0) {
               const fileItem = createFileItem(item);
               parentUl.appendChild(fileItem);
             }
           });
         })
         .catch(err => {
-          document.getElementById("error").textContent = "Error: " + err.message;
+          document.getElementById("error").textContent = "Error loading repo: " + err.message;
         });
     };
 
-    buildTree("", document.getElementById("file-tree"), false);
+    buildTree("", document.getElementById("file-tree"), 0);
   </script>
 </body>
 </html>
