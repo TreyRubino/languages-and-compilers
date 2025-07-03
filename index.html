@@ -9,8 +9,9 @@
       --bg: #ffffff;
       --text: #1f1f1f;
       --accent: #0969da;
-      --folder-icon: "▶";
-      --folder-open-icon: "▼";
+      --folder-closed: "📁";
+      --folder-open: "📂";
+      --file-icon: "📄";
       --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --hover-bg: #f3f4f6;
       --border-color: #e5e7eb;
@@ -76,14 +77,35 @@
     }
 
     .folder > span::before {
-      content: var(--folder-icon);
+      content: var(--folder-closed);
       display: inline-block;
       margin-right: 6px;
-      transition: transform 0.2s ease;
+      font-size: 1rem;
     }
 
     .folder.open > span::before {
-      content: var(--folder-open-icon);
+      content: var(--folder-open);
+    }
+
+    .file::before {
+      content: var(--file-icon);
+      display: inline-block;
+      margin-right: 6px;
+      color: var(--accent);
+      font-size: 1rem;
+    }
+
+    .file.has-icon::before {
+      content: none;
+    }
+
+    .file img.icon {
+    width: 1.35rem;
+    height: 1.35rem;
+    margin-right: 6px;
+    vertical-align: text-bottom;
+    user-select: none;
+    display: inline-block;
     }
 
     .file a {
@@ -120,6 +142,17 @@
     const branch = "main";
     const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
 
+    const iconURLs = {
+      ocaml: "https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons/file_type_ocaml.svg",
+      shell: "https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons/file_type_shell.svg"
+    };
+
+    const extensionToIconKey = {
+      ml: "ocaml",
+      mli: "ocaml",
+      sh: "shell"
+    };
+
     const createFolderItem = (dir, depth) => {
       const li = document.createElement("li");
       li.classList.add("folder");
@@ -147,6 +180,22 @@
     const createFileItem = (file) => {
       const li = document.createElement("li");
       li.classList.add("file");
+
+      const name = file.name;
+      const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+      let iconKey = extensionToIconKey[ext];
+
+      const isMakefile = /^makefile$/i.test(name);
+      const useCustomIcon = iconKey && iconURLs[iconKey];
+
+      if (useCustomIcon) {
+        li.classList.add("has-icon");
+        const img = document.createElement("img");
+        img.className = "icon";
+        img.src = iconURLs[iconKey];
+        img.alt = "";
+        li.appendChild(img);
+      }
 
       const link = document.createElement("a");
       link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
