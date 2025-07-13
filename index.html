@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Languages and Compilers</title>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #1f1f1f;
+      --accent: #0969da;
+      --folder-closed: "📁";
+      --folder-open: "📂";
+      --file-icon: "📄";
+      --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --hover-bg: #f3f4f6;
+      --border-color: #e5e7eb;
+      --scroll-thumb: #b0b0b0;
+      --tree-line: rgba(100, 100, 100, 0.3);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1e;
+        --text: #e2e2e2;
+        --accent: #58a6ff;
+        --hover-bg: #2a2a2a;
+        --border-color: #333;
+        --scroll-thumb: #444;
+        --tree-line: rgba(200, 200, 200, 0.2);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      max-width: 960px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--scroll-thumb);
+      border-radius: 5px;
+    }
+
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    p {
+      font-size: 1rem;
+      margin-bottom: 1.8rem;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 1rem;
+      margin: 0;
+    }
+
+    li {
+      margin: 0.2rem 0;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+      position: relative;
+    }
+
+    li:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .folder > span {
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--accent);
+      user-select: none;
+    }
+
+    .folder > span::before {
+      content: var(--folder-closed);
+      margin-right: 6px;
+    }
+
+    .folder.open > span::before {
+      content: var(--folder-open);
+    }
+
+    .file::before {
+      content: var(--file-icon);
+      margin-right: 6px;
+      color: var(--accent);
+    }
+
+    .file.has-icon::before {
+      content: none;
+    }
+
+    .file img.icon {
+      width: 1.3rem;
+      height: 1.3rem;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .file a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .file a:hover {
+      text-decoration: underline;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      margin-top: 2rem;
+      font-weight: 500;
+      color: crimson;
+    }
+
+    ul li ul {
+      margin-left: 1.2rem;
+      padding-left: 0.6rem;
+      border-left: 2px solid var(--tree-line);
+    }
+  </style>
+</head>
+<body>
+  <h1>Languages and Compilers</h1>
+  <p>Trey Rubino</p>
+  <ul id="file-tree"></ul>
+  <div id="error" class="error"></div>
+
+  <script>
+    const username = "TreyRubino";
+    const repo = "languages-and-compilers";
+    const branch = "main";
+    const apiBase = `https://api.github.com/repos/${username}/${repo}/contents`;
+
+    const iconURLs = {
+      ocaml: "https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons/file_type_ocaml.svg",
+      shell: "https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons/file_type_shell.svg"
+    };
+
+    const extensionToIconKey = {
+      ml: "ocaml",
+      mll: "ocaml",
+      mly: "ocaml",
+      sh: "shell"
+    };
+
+    const createFolderItem = (dir, depth) => {
+      const li = document.createElement("li");
+      li.classList.add("folder");
+
+      const label = document.createElement("span");
+      label.textContent = dir.name;
+      li.appendChild(label);
+
+      const subUl = document.createElement("ul");
+      subUl.classList.add("hidden");
+      li.appendChild(subUl);
+
+      label.addEventListener("click", () => {
+        const isOpen = !subUl.classList.contains("hidden");
+        li.classList.toggle("open", !isOpen);
+        subUl.classList.toggle("hidden", isOpen);
+        if (!isOpen && subUl.children.length === 0) {
+          buildTree(dir.path, subUl, depth + 1);
+        }
+      });
+
+      return li;
+    };
+
+    const createFileItem = (file) => {
+      const li = document.createElement("li");
+      li.classList.add("file");
+
+      const name = file.name;
+      const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+      const iconKey = extensionToIconKey[ext];
+      const useCustomIcon = iconKey && iconURLs[iconKey];
+
+      if (useCustomIcon) {
+        li.classList.add("has-icon");
+        const img = document.createElement("img");
+        img.className = "icon";
+        img.src = iconURLs[iconKey];
+        img.alt = "";
+        li.appendChild(img);
+      }
+
+      const link = document.createElement("a");
+      link.href = `https://raw.githubusercontent.com/${username}/${repo}/${branch}/${file.path}`;
+      link.textContent = name;
+      link.target = "_blank";
+      li.appendChild(link);
+
+      return li;
+    };
+
+    const buildTree = (path, parentUl, depth = 0) => {
+      const url = path ? `${apiBase}/${path}` : apiBase;
+      fetch(url)
+        .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
+        .then(data => {
+          data.forEach(item => {
+            if (item.type === "dir") {
+              parentUl.appendChild(createFolderItem(item, depth));
+            } else if (item.type === "file" && depth > 0) {
+              parentUl.appendChild(createFileItem(item));
+            }
+          });
+        })
+        .catch(err => {
+          document.getElementById("error").textContent = "Error: " + err;
+        });
+    };
+
+    buildTree("", document.getElementById("file-tree"), 0);
+  </script>
+</body>
+</html>
