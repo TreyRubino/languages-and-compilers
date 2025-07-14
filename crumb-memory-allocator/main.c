@@ -18,6 +18,7 @@ Heap allocate_heap(int requested_size);
 
 /// uses first-fit
 void *cmalloc(size_t size);
+void cfree(void *ptr);
 
 static Block *free_list_head = NULL; 
 
@@ -36,23 +37,65 @@ int main(int argc, char *argv[])
     first->free = 1;
     first->next = NULL;
 
-    // keep explicit track of the start of the first block using a static variable
+    /// keep explicit track of the start of the first block using a static variable
     /// static variables will live for as long as the program is alive unlike
     /// stack allocated variables where they are destroyed when leaving scope
     free_list_head = first;
 
     /// lets allocate some memory! 
     size_t size = 32;
-    void *p = cmalloc(size);
-    assert(p != NULL);
+    void *ptr = cmalloc(size);
+    assert(ptr != NULL);
 
-    ((char *)p)[0] = 'A';
-    ((char *)p)[1] = 'B';
+    ((char *)ptr)[0] = 'A';
+    ((char *)ptr)[1] = 'B';
 
-    assert(((char *)p)[0] == 'A');
-    assert(((char *)p)[1] == 'B');
+    assert(((char *)ptr)[0] == 'A');
+    assert(((char *)ptr)[1] == 'B');
+
+    /// test to see if the block was marked as free
+    void *freed_ptr = ptr;
+    cfree(ptr);
+    Block *current = free_list_head;
+    while (current != NULL) {
+        if (((char *)current + BLOCK_HEADER_SIZE) == freed_ptr) {
+            assert(current->free == 1);
+            break;
+        }
+        current = current->next;
+    }
 
     return EXIT_SUCCESS;
+}
+
+void cfree(void *ptr)
+{
+    if (ptr == NULL) {
+        return;
+    }
+
+    Block *b = (Block *)((char *)ptr - BLOCK_HEADER_SIZE);
+    b->free = 1;
+
+    /// now that the given block has been marked free, its time to
+    /// merge adjacent free blocks to minimize external fragmentation within
+    /// our managed heap, this is called coalescing 
+    Block *current = free_list_head;
+    while (current != NULL && current->next != NULL) {
+        /// are both current and next free? 
+        if (current->free == 1 && current->next->free == 1) {
+            /// are the blocks physically next to each other in memory?
+            if ((char *)current + current->size == (char *)current->next) {
+                /// merge the adjacent blocks together
+                current->size += current->next->size;
+                current->next = current->next->next;
+            } else {
+                current = current->next;
+            }
+        } else {
+            current = current->next;
+        }
+    }
 }
 
 void *cmalloc(size_t size)
@@ -100,11 +143,8 @@ void *cmalloc(size_t size)
 Heap allocate_heap(int requested_size)
 {
     char *start, *middle, *end;
-
-    /// unlike brk(), sbrk returns a pointer to the start of the requested heap
-    /// for manipulation up to grow, and down to shrink the allocated heap
     start = (char *)mmap(NULL, requested_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (start == MAP_FAILED) {      /// returns negative 1 on failure and also sets error numbers
+    if (start == MAP_FAILED) {     
         perror("mmap failed");
         exit(EXIT_FAILURE);
     }
