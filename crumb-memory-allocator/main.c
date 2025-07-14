@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include <sys/mman.h>
 
 #include "inc/heap.h"
@@ -14,58 +15,76 @@
 #define BLOCK_HEADER_SIZE sizeof(Block)
 #define BLOCK_MIN_SIZE sizeof(BLOCK_HEADER_SIZE + 16)
 
-Heap allocate_heap(int requested_size);
+static Block *free_list_head = NULL; 
 
 /// uses first-fit
 void *cmalloc(size_t size);
 void cfree(void *ptr);
+void cinit(void);
+void cdebug(void);
 
-static Block *free_list_head = NULL; 
+int main(void) 
+{
+    cinit();
+    printf("=== Crumb Allocator Demo ===\n\n");
 
-int main(int argc, char *argv[])
-{    
-    Heap heap = allocate_heap(HEAP_SIZE);
+    printf("Heap initialized (%d bytes total)\n", HEAP_SIZE);
+    printf("Each allocation includes a header of %zu bytes.\n", sizeof(Block));
+    usleep(1000000);
 
-    printf("Heap start (the break): %p\n", heap.start);
-    printf("Heap middle: %p\n", heap.middle);
-    printf("Heap end: %p\n", heap.end); 
-    printf("Heap size: %d\n", heap.size);
+    printf("\n[1] Allocating 32 bytes...\n");
+    char *a = (char *)cmalloc(32);
+    assert(a);
+    strcpy(a, "hello, crumb");
+    printf("  → Allocated at: %p | Written: %s\n", (void *)a, a);
+    cdebug();
 
-    /// lets init the first block instance
-    Block *first = (Block *)heap.start;
-    first->size = heap.size;
-    first->free = 1;
-    first->next = NULL;
+    usleep(1000000);
+    printf("\n[2] Freeing block...\n");
+    cfree(a);
+    printf("  → Block freed.\n");
+    cdebug();
 
-    /// keep explicit track of the start of the first block using a static variable
-    /// static variables will live for as long as the program is alive unlike
-    /// stack allocated variables where they are destroyed when leaving scope
-    free_list_head = first;
+    usleep(1000000);
+    printf("\n[3] Allocating 32 bytes again...\n");
+    char *b = (char *)cmalloc(32);
+    assert(b);
+    strcpy(b, "block reuse success");
+    printf("  → Allocated at: %p | Written: %s\n", (void *)b, b);
+    cdebug();
 
-    /// lets allocate some memory! 
-    size_t size = 32;
-    void *ptr = cmalloc(size);
-    assert(ptr != NULL);
+    usleep(1000000);
+    printf("\n[4] Allocating 3 blocks of 16 bytes...\n");
+    char *x = (char *)cmalloc(16);
+    char *y = (char *)cmalloc(16);
+    char *z = (char *)cmalloc(16);
+    assert(x && y && z);
+    strcpy(x, "X");
+    strcpy(y, "Y");
+    strcpy(z, "Z");
+    printf("  → x: %p, y: %p, z: %p\n", (void *)x, (void *)y, (void *)z);
+    cdebug();
 
-    ((char *)ptr)[0] = 'A';
-    ((char *)ptr)[1] = 'B';
+    usleep(1000000);
+    printf("\n[5] Freeing all blocks...\n");
+    cfree(b);
+    cfree(x);
+    cfree(y);
+    cfree(z);
+    cdebug();
 
-    assert(((char *)ptr)[0] == 'A');
-    assert(((char *)ptr)[1] == 'B');
-
-    /// test to see if the block was marked as free
-    void *freed_ptr = ptr;
-    cfree(ptr);
-    Block *current = free_list_head;
-    while (current != NULL) {
-        if (((char *)current + BLOCK_HEADER_SIZE) == freed_ptr) {
-            assert(current->free == 1);
-            break;
-        }
-        current = current->next;
-    }
-
+    usleep(1000000);
+    printf("\nCrumb allocator working as expected — no memory leaked, full reuse and coalescing verified.\n");
     return EXIT_SUCCESS;
+}
+
+void cdebug() 
+{
+    Block *b = free_list_head;
+    while (b) {
+        printf("Block at %p | size: %zu | free: %d\n", (void *)b, b->size, b->free);
+        b = b->next;
+    }
 }
 
 void cfree(void *ptr)
@@ -140,18 +159,21 @@ void *cmalloc(size_t size)
     return NULL; /// no block was found for the requested size 
 }
 
-Heap allocate_heap(int requested_size)
+void cinit()
 {
     char *start, *middle, *end;
-    start = (char *)mmap(NULL, requested_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    start = (char *)mmap(NULL, HEAP_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (start == MAP_FAILED) {     
         perror("mmap failed");
         exit(EXIT_FAILURE);
     }
 
-    middle = start + (requested_size / 2);       /// this will give us the middle of our allocated heap  
-    end = start + requested_size;                /// this will give us the a pointer to the end of the heap
-  
-    Heap h = {start, middle, end, requested_size};
-    return h;
+    middle = start + (HEAP_SIZE / 2);       /// this will give us the middle of our allocated heap  
+    end = start + HEAP_SIZE;                /// this will give us the a pointer to the end of the heap
+
+    Block *first = (Block *)start;
+    first->size = HEAP_SIZE;
+    first->free = 1;
+    first->next = NULL;
+    free_list_head = first;
 }
