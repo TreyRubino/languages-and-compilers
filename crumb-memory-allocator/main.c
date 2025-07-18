@@ -19,7 +19,9 @@ static Block *free_list_head = NULL;
 
 /// uses first-fit
 void *cmalloc(size_t size);
+void *crealloc(void *ptr, size_t size);
 void cfree(void *ptr);
+
 void cinit(void);
 void cdebug(void);
 
@@ -157,6 +159,49 @@ void *cmalloc(size_t size)
         }
     }
     return NULL; /// no block was found for the requested size 
+}
+
+void *crealloc(void *ptr, size_t size) 
+{
+    /// pointer is NULL, this is the same as allocating a new block
+    /// so do so
+    if (ptr == NULL) return cmalloc(size);
+    
+    /// if the requested size is 0, this is the same
+    /// as freeing the provided pointer, call free and 
+    /// return the NULL pointer 
+    if (size == 0) { cfree(ptr); return NULL; }
+
+    /// now we need to get the meta data of the 
+    /// provided pointer, and check if the given pointers
+    /// body already has enough space for the reallocation
+    /// size, then return the given pointer unchanged
+    Block *current = (Block *)((char *)ptr - BLOCK_HEADER_SIZE);
+    if (current->size - BLOCK_HEADER_SIZE >= size) return ptr;
+
+    /// since the the given pointer is not large enough
+    /// lets try in place expansion by checking the next pointers 
+    /// size and combined with the given pointers size
+    if (
+        current->next->free == 1 && 
+        (char *)current + current->size == (char *)current->next 
+    ) {
+        current->size += current->next->size;
+        current->next = current->next->next;
+        return ptr;
+    }
+
+    /// in place expansion is not possible so we need to
+    /// alloc a new block, and copy the contents of the old block
+    /// into the new block. This is the current blocks size minus
+    /// the size of the header to get the payload size, take the minium of 
+    /// the request size and the current payload size since we don't know
+    /// if cmalloc shrunk the block exactly to the requested size of not. 
+    /// after copy lets make sure to free the old block and return the new
+    void *new = cmalloc(size);
+    memcpy(new, ptr, ((current->size - BLOCK_HEADER_SIZE) < size) ? (current->size - BLOCK_HEADER_SIZE) : size);
+    cfree(ptr);
+    return new;
 }
 
 void cinit()
