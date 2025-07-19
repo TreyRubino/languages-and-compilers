@@ -33,6 +33,7 @@ type token =
     | ELSE
     | CLASS
     | CASE 
+    | ESAC
     | INHERITS
     | LOOP
     | POOL
@@ -86,6 +87,7 @@ rule token = parse
     | ['e' 'E']['l' 'L']['s' 'S']['e' 'E']                                      { ELSE }
     | ['c' 'C']['l' 'L']['a' 'A']['s' 'S']['s' 'S']                             { CLASS }
     | ['c' 'C']['a' 'A']['s' 'S']['e' 'E']                                      { CASE }
+    | ['e' 'C']['s' 'S']['a' 'A']['c' 'C']                                      { ESAC }
     | ['i' 'I']['n' 'N']['h' 'H']['e' 'E']['r' 'R']['i' 'I']['t' 'T']['s' 'S']  { INHERITS }
     | ['l' 'L']['o' 'O']['o' 'O']['p' 'P']                                      { LOOP }
     | ['p' 'P']['o' 'O']['o' 'O']['l' 'L']                                      { POOL }

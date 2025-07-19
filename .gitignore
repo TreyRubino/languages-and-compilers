@@ -1,6 +1,3 @@
 .DS_Store
 .vscode/
-
-*.exe
-*.out
-*.o
+build/
