@@ -19,6 +19,8 @@ and expr_internal =
     | SelfDispatch of identifier * expr list
     | If of expr * expr * expr
     | While of expr * expr
+    | LetNoBinding of id * id * expr list
+    | LetBinding of id * id * expr * epxr list
     | New of identifier
     | Isvoid of expr
     | Plus of expr * expr
@@ -46,7 +48,7 @@ type program = structure list
 %token <string> AT LT SEMI TILDE DOT COMMA COLON
 %token <string> RBRACE LBRACE RPAREN LPAREN LE
 %token <string> LARROW RARROW TRUE FALSE NEW NOT
-%token <string> LET ELSE CLASS CASE INHERITS LOOP
+%token <string> LET ELSE CLASS CASE ESAC INHERITS LOOP
 %token <string> POOL ISVOID OF IN IF FI WHILE THEN
 %token EOF
 
@@ -66,67 +68,74 @@ type program = structure list
 %% 
 
 program: 
-| class_list                                                                  { $1 }
-;
+    | class_list                                                                  { $1 }
+    ;
 
 class_list: 
-| /* lambda */                                                                { [] }
-| structure SEMI class_list                                                   { $1 :: $3 }
-;
+    | /* lambda */                                                                { [] }
+    | structure SEMI class_list                                                   { $1 :: $3 }
+    ;
 
 structure:
-| CLASS TYPE LBRACE feature_list RBRACE                                        { ClassNoInherits($2, $4) } 
-| CLASS TYPE INHERITS TYPE LBRACE feature_list RBRACE                          { ClassInherits($2, $4, $6) }
-;    
+    | CLASS TYPE LBRACE feature_list RBRACE                                        { ClassNoInherits($2, $4) } 
+    | CLASS TYPE INHERITS TYPE LBRACE feature_list RBRACE                          { ClassInherits($2, $4, $6) }
+    ;      
 
 feature_list:
-| /* lambda */                                                                { [] }
-| feature SEMI feature_list                                                   { $1 :: $3 }
-;
+    | /* lambda */                                                                { [] }
+    | feature SEMI feature_list                                                   { $1 :: $3 }
+    ;
 
 feature:
-| IDENTIFIER COLON TYPE                                                       { AttributeNoInit($1, $3) }  
-| IDENTIFIER COLON TYPE LARROW expr                                           { AttributeInit($1, $3, $5) }
-| IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE expr RBRACE          { Method($1, $3, $6, $8) }  
-; 
+    | IDENTIFIER COLON TYPE                                                       { AttributeNoInit($1, $3) }  
+    | IDENTIFIER COLON TYPE LARROW expr                                           { AttributeInit($1, $3, $5) }
+    | IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE expr RBRACE          { Method($1, $3, $6, $8) }  
+    ; 
 
 formal_list:
-| /* lambda */                                                                { [] }
-| formal COMMA formal_list                                                    { $1 :: $3 } 
-;
+    | /* lambda */                                                                { [] }
+    | formal COMMA formal_list                                                    { $1 :: $3 } 
+    ;
 
 formal:
-| IDENTIFIER COLON TYPE                                                       { $1, $3 }
-;
+    | IDENTIFIER COLON TYPE                                                       { $1, $3 }
+    ;
 
 expr_list :
-| /* lambda */                                                                { [] }
-| expr COMMA expr_list                                                        { $1 :: $3 }
+    | /* lambda */                                                                { [] }
+    | expr COMMA expr_list                                                        { $1 :: $3 }
+    ;
+
+let_binding_list:
+    | /* lambda */
+    | LARROW expr
 
 expr :
-| IDENTIFIER LARROW expr                                                      { let line, _ = $1 in (line, Assign($1, $3)) }
-| expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN                         { let line, _ = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
-| expr DOT IDENTIFIER LPAREN expr_list RPAREN                                 { let line, _ = $1 in (line, DynamicDispatch($1, $3, $5)) }
-| IDENTIFIER LPAREN expr_list RPAREN                                          { let line, _ = $1 in (line, SelfDispatch($1, $3)) }
-| IF expr THEN expr ELSE expr FI                                              { ($1, If($2, $4, $6)) }
-| WHILE expr LOOP expr POOL                                                   { ($1, While($2, $4)) }
-| NEW TYPE                                                                    { ($1, New($2)) }
-| ISVOID expr                                                                 { ($1, Isvoid($2)) }
-| expr PLUS expr                                                              { let line, _ = $1 in (line, Plus($1, $3)) }
-| expr MINUS expr                                                             { let line, _ = $1 in (line, Minus($1, $3)) }
-| expr TIMES expr                                                             { let line, _ = $1 in (line, Times($1, $3)) }
-| expr DIVIDE expr                                                            { let line, _ = $1 in (line, Divide($1, $3)) }
-| TILDE expr                                                                  { ($1, Tilde($2)) }
-| expr LT expr                                                                { let line, _ = $1 in (line, Lt($1, $3)) }
-| expr LE expr                                                                { let line, _ = $1 in (line, Le($1, $3)) }
-| expr EQUALS expr                                                            { let line, _ = $1 in (line, Equals($1, $3)) }
-| NOT expr                                                                    { ($1, Not($2)) }
-| IDENTIFIER                                                                  { let line, id = $1 in (line, Identifier(line, id)) }
-| INTEGER                                                                     { let line, int = $1 in (line, Integer(int)) }
-| STRING                                                                      { let line, string = $1 in (line, String(string)) }
-| TRUE                                                                        { ($1, True) }
-| FALSE                                                                       { ($1, False) }
-;   
+    | IDENTIFIER LARROW expr                                                      { let line, _ = $1 in (line, Assign($1, $3)) }
+    | expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN                         { let line, _ = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
+    | expr DOT IDENTIFIER LPAREN expr_list RPAREN                                 { let line, _ = $1 in (line, DynamicDispatch($1, $3, $5)) }
+    | IDENTIFIER LPAREN expr_list RPAREN                                          { let line, _ = $1 in (line, SelfDispatch($1, $3)) }
+    | IF expr THEN expr ELSE expr FI                                              { ($1, If($2, $4, $6)) }
+    | WHILE expr LOOP expr POOL                                                   { ($1, While($2, $4)) }
+    | LET identifier COLON TYPE let_binding_list                                  { ($1, Let($2, $5)) }
+    | CASE expr OF case_list ESAC                                                 { ($1, Case($2, $4)) }
+    | NEW TYPE                                                                    { ($1, New($2)) }
+    | ISVOID expr                                                                 { ($1, Isvoid($2)) }
+    | expr PLUS expr                                                              { let line, _ = $1 in (line, Plus($1, $3)) }
+    | expr MINUS expr                                                             { let line, _ = $1 in (line, Minus($1, $3)) }
+    | expr TIMES expr                                                             { let line, _ = $1 in (line, Times($1, $3)) }
+    | expr DIVIDE expr                                                            { let line, _ = $1 in (line, Divide($1, $3)) }
+    | TILDE expr                                                                  { ($1, Tilde($2)) }
+    | expr LT expr                                                                { let line, _ = $1 in (line, Lt($1, $3)) }
+    | expr LE expr                                                                { let line, _ = $1 in (line, Le($1, $3)) }
+    | expr EQUALS expr                                                            { let line, _ = $1 in (line, Equals($1, $3)) }
+    | NOT expr                                                                    { ($1, Not($2)) }
+    | IDENTIFIER                                                                  { let line, id = $1 in (line, Identifier(line, id)) }
+    | INTEGER                                                                     { let line, int = $1 in (line, Integer(int)) }
+    | STRING                                                                      { let line, string = $1 in (line, String(string)) }
+    | TRUE                                                                        { ($1, True) }
+    | FALSE                                                                       { ($1, False) }
+    ;   
 
 %% 
 
@@ -256,7 +265,25 @@ begin
         | Assign(lh_value, rh_value) ->
             fprintf f "assign\n" ; 
             serialize_identifier lh_value ;
-            serialize_expr rh_value 
+            serialize_expr rh_value
+        | DynamicDispatch(expr, method_name, args) -> 
+            fprintf f "dynamic_dispatch\n" ; 
+            serialize_expr expr ; 
+            serialize_identifier method_name ;
+            fprintf f "%d\n" (List.length args) ; 
+            List.iter serialize_expr args
+        | StaticDispatch(expr, type_name, method_name, args) -> 
+            fprintf f"static_dispatch\n" ;
+            serialize_expr expr ; 
+            serialize_identifier type_name ;  
+            serialize_identifier method_name ;
+            fprintf f "%d\n" (List.length args) ; 
+            List.iter serialize_expr args
+        | SelfDispatch(method_name, args) -> 
+            fprintf f "self_dispatch\n" ; 
+            serialize_identifier method_name ; 
+            fprintf f "%d\n" (List.length args) ; 
+            List.iter serialize_expr args
         | If(predicate, then_br, else_br) -> 
             serialize_expr predicate ; 
             serialize_expr then_br ;
