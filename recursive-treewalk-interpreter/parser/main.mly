@@ -19,8 +19,6 @@ and expr_internal =
     | SelfDispatch of identifier * expr list
     | If of expr * expr * expr
     | While of expr * expr
-    | LetNoBinding of id * id * expr list
-    | LetBinding of id * id * expr * epxr list
     | New of identifier
     | Isvoid of expr
     | Plus of expr * expr
@@ -106,10 +104,6 @@ expr_list :
     | expr COMMA expr_list                                                        { $1 :: $3 }
     ;
 
-let_binding_list:
-    | /* lambda */
-    | LARROW expr
-
 expr :
     | IDENTIFIER LARROW expr                                                      { let line, _ = $1 in (line, Assign($1, $3)) }
     | expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN                         { let line, _ = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
@@ -117,8 +111,6 @@ expr :
     | IDENTIFIER LPAREN expr_list RPAREN                                          { let line, _ = $1 in (line, SelfDispatch($1, $3)) }
     | IF expr THEN expr ELSE expr FI                                              { ($1, If($2, $4, $6)) }
     | WHILE expr LOOP expr POOL                                                   { ($1, While($2, $4)) }
-    | LET identifier COLON TYPE let_binding_list                                  { ($1, Let($2, $5)) }
-    | CASE expr OF case_list ESAC                                                 { ($1, Case($2, $4)) }
     | NEW TYPE                                                                    { ($1, New($2)) }
     | ISVOID expr                                                                 { ($1, Isvoid($2)) }
     | expr PLUS expr                                                              { let line, _ = $1 in (line, Plus($1, $3)) }
