@@ -42,7 +42,6 @@ and let_binding =
     | LetBindingInit of identifier * identifier * expr
 and expr = string * expr_internal
 
-
 type program = structure list
 
 %}
@@ -137,7 +136,7 @@ expr:
 sum_expr:
     | sum_expr PLUS  product_expr           { let line, _ = $1 in (line, Plus ($1, $3)) }
     | sum_expr MINUS product_expr           { let line, _ = $1 in (line, Minus($1, $3)) }
-    | product_expr                          %prec LOWEST   { $1 }
+    | product_expr                          %prec LOWEST    { $1 }
     ;
 
 product_expr:
@@ -325,6 +324,7 @@ begin
             fprintf f "%d\n" (List.length args) ; 
             List.iter serialize_expr args
         | If(predicate, then_br, else_br) -> 
+            fprintf f "if\n" ; 
             serialize_expr predicate ; 
             serialize_expr then_br ;
             serialize_expr else_br
