@@ -19,8 +19,8 @@ and expr_internal =
     | SelfDispatch of identifier * expr list
     | If of expr * expr * expr
     | While of expr * expr
-    | LetNoBinding of id * id * expr list
-    | LetBinding of id * id * expr * epxr list
+    | Let of (let_binding list) * expr
+    | Case of expr * (identifier * identifier * expr) list
     | New of identifier
     | Isvoid of expr
     | Plus of expr * expr
@@ -37,7 +37,11 @@ and expr_internal =
     | String of string
     | True
     | False
+and let_binding =
+    | LetBindingNoInit of identifier * identifier
+    | LetBindingInit of identifier * identifier * expr
 and expr = string * expr_internal
+
 
 type program = structure list
 
@@ -52,6 +56,7 @@ type program = structure list
 %token <string> POOL ISVOID OF IN IF FI WHILE THEN
 %token EOF
 
+%nonassoc LET CASE
 %right LARROW
 %left NOT
 %nonassoc LE LT EQUALS
@@ -101,23 +106,38 @@ formal:
     | IDENTIFIER COLON TYPE                                                       { $1, $3 }
     ;
 
-expr_list :
+expr_list:
     | /* lambda */                                                                { [] }
     | expr COMMA expr_list                                                        { $1 :: $3 }
     ;
 
-let_binding_list:
-    | /* lambda */
-    | LARROW expr
+let_binding:
+    | IDENTIFIER COLON TYPE                                                       { LetBindingNoInit($1, $3) }
+    | IDENTIFIER COLON TYPE LARROW expr                                           { LetBindingInit($1, $3, $5) }
+    ;
 
-expr :
+let_binding_list:
+    | let_binding                                                                 { [$1] }
+    | let_binding COMMA let_binding_list                                          { $1 :: $3 }
+    ;
+
+case_branch:
+    |  IDENTIFIER COLON TYPE RARROW expr                                          { ($1, $3, $5) }
+    ;
+ 
+case_list:
+    | case_branch                                                                 { [$1] }
+    | case_branch SEMI case_list                                                  { $1 :: $3 }
+    ;
+
+expr:
     | IDENTIFIER LARROW expr                                                      { let line, _ = $1 in (line, Assign($1, $3)) }
     | expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN                         { let line, _ = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
     | expr DOT IDENTIFIER LPAREN expr_list RPAREN                                 { let line, _ = $1 in (line, DynamicDispatch($1, $3, $5)) }
     | IDENTIFIER LPAREN expr_list RPAREN                                          { let line, _ = $1 in (line, SelfDispatch($1, $3)) }
     | IF expr THEN expr ELSE expr FI                                              { ($1, If($2, $4, $6)) }
     | WHILE expr LOOP expr POOL                                                   { ($1, While($2, $4)) }
-    | LET identifier COLON TYPE let_binding_list                                  { ($1, Let($2, $5)) }
+    | LET let_binding_list IN expr                                                { ($1, Let($2, $4)) }
     | CASE expr OF case_list ESAC                                                 { ($1, Case($2, $4)) }
     | NEW TYPE                                                                    { ($1, New($2)) }
     | ISVOID expr                                                                 { ($1, Isvoid($2)) }
@@ -292,6 +312,21 @@ begin
             fprintf f "while\n" ; 
             serialize_expr predicate ; 
             serialize_expr while_body 
+        | Let (bindings, body_expr) ->
+            fprintf f "let\n" ;
+            List.iter (fun b ->
+                match b with
+                | LetBindingNoInit (var, ty) ->
+                    fprintf f "let_binding_no_init\n" ;
+                    serialize_identifier var ;
+                    serialize_identifier ty
+                | LetBindingInit (var, ty, init_expr) ->
+                    fprintf f "let_binding_init\n" ;
+                    serialize_identifier var ;
+                    serialize_identifier ty ;
+                    serialize_expr init_expr
+            ) bindings ;
+            serialize_expr body_expr
         | New(obj_type) ->
             fprintf f "new\n" ; 
             serialize_identifier obj_type
