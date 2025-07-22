@@ -134,23 +134,87 @@ begin
         let eloc = read () in 
         let ekind =  
             match read () with 
-            | "integer" -> 
-                let ival = read () in
-                Integer(ival)
-            | "plus" -> 
-                let expr1 = read_expr () in 
-                let expr2 = read_expr () in 
-                Plus(expr1, expr2)
-            | "indentifier" -> 
-                let id = read_id () in
-                Identifier(id)
-            | "let" -> (* only consider one let binding *)
+            | "assign\n" -> 
+                let lh_value = read_id () in
+                let rh_value = read_expr () in
+                Assign(lh_value, rh_value)
+            | "dynamic_dispatch\n" -> 
+                DynamicDispatch()
+            | "static_dispatch\n" -> 
+                StaticDispatch()
+            | "self_dispatch\n" -> 
+                SelfDispatch()
+            | "if\n" -> 
+                let predicate = read_expr () in
+                let then_br = read_expr () in
+                let else_br = read_expr () in
+                If(predicate, then_br, else_br)
+            | "while\n" -> 
+                let predicate = read_expr () in
+                let body = read_expr () in
+                While(predicate, body)
+            | "let" -> (* only consider one let binding for now*)
                 let num_bindings = read () in 
                 let no_init = read () in 
                 let let_var = read_id () in
                 let let_type = read_id () in 
                 let let_body = read_expr () in 
                 Let (let_var, let_type, None, let_body)
+            | "case" -> 
+                Case()
+            | "new\n" -> 
+                let ty = read_id () in 
+                New(ty)
+            | "isvoid\n" -> 
+                let sub1 = read_expr () in
+                Isvoid(sub1)
+            | "plus" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Plus(expr1, expr2)
+            | "minus" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Minus(expr1, expr2)
+            | "times" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Times(expr1, expr2)
+            | "divide" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Divide(expr1, expr2)
+            | "negate" -> 
+                let sub1 = read_expr () in
+                Tilde(sub1)
+            | "lt" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Lt(expr1, expr2)
+            | "le" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Le(expr1, expr2)
+            | "equals" -> 
+                let expr1 = read_expr () in 
+                let expr2 = read_expr () in 
+                Equals(expr1, expr2)
+            | "not" -> 
+                let sub1 = read_expr () in 
+                Not(sub1)
+            | "indentifier" -> 
+                let id = read_id () in
+                Identifier(id)
+            | "integer" -> 
+                let ival = read () in
+                Integer(ival)
+            | "string" ->
+                let s = read () in
+                String(s)
+            | "true" -> 
+                True()
+            | "false" -> 
+                False()
             | x -> failwith ("expression kind unhandled: " ^ x)
         in
         { 
@@ -238,9 +302,9 @@ begin
                     let declared_type = Hashtbl.find o vname in
                     let expr_type = type_check o expr in
 
-                    if is_subtype expr_type declared_type then
+                    if is_subtype expr_type declared_type then (
                         expr_type
-                    else (
+                    ) else (
                         raise TYPE_ERROR
                     )
                 ) else ( 
@@ -322,5 +386,6 @@ begin
         ) attributes ;
     ) all_classes ; 
     close_out fout ;
+    
 end ;;
 main () ;;
