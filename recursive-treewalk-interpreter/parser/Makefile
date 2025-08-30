@@ -4,37 +4,43 @@
 # Compile instructions
 
 OCAMLYACC = ocamlyacc
-OCAMLC = ocamlc
+OCAMLC    = ocamlc
+BUILD     = build
 
-BUILD_DIR = ../build
 PARSER_MLY = main.mly
-PARSER_ML  = $(BUILD_DIR)/main.ml
-EXECUTABLE = $(BUILD_DIR)/parser
-SRC = two_class_test.cl-lex
+# ocamlyacc -b lets us set the basename; we point it inside build/
+YACC_BASE  = $(BUILD)/main
+GEN_ML     = $(YACC_BASE).ml
+GEN_MLI    = $(YACC_BASE).mli
+GEN_OUT    = $(YACC_BASE).output
 
-all: $(EXECUTABLE)
+EXECUTABLE = parser
+SRC        = two_class_test.cl-lex
 
-# Ensure build directory exists
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+all: $(BUILD) $(EXECUTABLE)
 
-# Generate main.ml and main.mli from main.mly
-$(PARSER_ML): $(PARSER_MLY) | $(BUILD_DIR)
-	$(OCAMLYACC) -v -b $(BUILD_DIR)/main $(PARSER_MLY)
-	rm -f $(BUILD_DIR)/main.mli
+$(BUILD):
+	mkdir -p $(BUILD)
 
-# Compile main.ml to main.cmo
-$(BUILD_DIR)/main.cmo: $(PARSER_ML)
-	$(OCAMLC) -c -o $(BUILD_DIR)/main.cmo $(BUILD_DIR)/main.ml
+# Generate build/main.ml (+ .mli and .output) from main.mly
+$(GEN_ML): $(PARSER_MLY) | $(BUILD)
+	$(OCAMLYACC) -v -b $(YACC_BASE) $(PARSER_MLY)
+	@rm -f $(GEN_MLI)  # you don't use it
 
-# Link to create the executable
-$(EXECUTABLE): $(BUILD_DIR)/main.cmo
-	$(OCAMLC) -o $(EXECUTABLE) $(BUILD_DIR)/main.cmo
+# Compile to build/main.cmo (+ its .cmi into build/)
+$(BUILD)/main.cmo: $(GEN_ML) | $(BUILD)
+	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/main.cmo $(GEN_ML)
+	@([ -f main.cmi ] && mv -f main.cmi $(BUILD)/) || true
+
+# Link final executable at repo root
+$(EXECUTABLE): $(BUILD)/main.cmo
+	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/main.cmo
 
 run:
-	make clean && make && ./$(EXECUTABLE) $(SRC)
+	$(MAKE) clean && $(MAKE) && ./$(EXECUTABLE) $(SRC)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -f $(EXECUTABLE)
+	rm -rf $(BUILD)
 
 .PHONY: all run clean

@@ -1,28 +1,34 @@
 # Trey Rubino
-# CPSC 425 Compiler Design 1 
-# Dr. Schwesinger 
-# Compile instructions
+# CPSC 425 Compiler Design 1
+# Dr. Schwesinger
 
 OCAMLC = ocamlc
-
-CHECKER_ML = main.ml
-CHECKER_CMO = main.cmo
+BUILD  = build
 
 EXECUTABLE = checker
 SRC = test.cl-ast
 
-all: $(EXECUTABLE)
+ML  = ast.ml env.ml reader.ml typecheck.ml writer.ml main.ml
+CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
-$(EXECUTABLE): $(CHECKER_CMO)
-	$(OCAMLC) -o $(EXECUTABLE) $(CHECKER_CMO)
+all: $(BUILD) $(EXECUTABLE)
 
-$(CHECKER_CMO): $(CHECKER_ML)
-	$(OCAMLC) -c $(CHECKER_ML)
+$(BUILD):
+	mkdir -p $(BUILD)
 
-run: 
+# Compile each .ml to build/*.cmo and move its .cmi into build/ as well
+$(BUILD)/%.cmo: %.ml | $(BUILD)
+	$(OCAMLC) -I $(BUILD) -c -o $@ $<
+	@([ -f $*.cmi ] && mv -f $*.cmi $(BUILD)/) || true
+
+$(EXECUTABLE): $(CMO)
+	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(CMO)
+
+run:
 	make clean && make && ./$(EXECUTABLE) $(SRC)
 
 clean:
-	rm -f $(EXECUTABLE) *.cmi *.cmo *.o *.cl-type a.out
+	rm -f $(EXECUTABLE) *.cl-type a.out
+	rm -rf $(BUILD)
 
 .PHONY: all run clean

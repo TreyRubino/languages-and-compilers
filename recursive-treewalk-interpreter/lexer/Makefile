@@ -4,29 +4,38 @@
 # Compile instructions
 
 OCAMLLEX = ocamllex
-OCAMLC = ocamlc
+OCAMLC   = ocamlc
+BUILD    = build
 
 MAIN_MLL = main.mll
-MAIN_ML = main.ml
+GEN_ML   = $(BUILD)/main.ml
 
 EXECUTABLE = lexer
 SRC = two_class_test.cl
 
-all: $(EXECUTABLE)
+all: $(BUILD) $(EXECUTABLE)
 
-$(MAIN_ML): $(MAIN_MLL)
-	$(OCAMLLEX) $(MAIN_MLL)
+$(BUILD):
+	mkdir -p $(BUILD)
 
-main.cmo: $(MAIN_ML)
-	$(OCAMLC) -c $(MAIN_ML)
+# Generate build/main.ml from main.mll
+$(GEN_ML): $(MAIN_MLL) | $(BUILD)
+	$(OCAMLLEX) -o $(GEN_ML) $(MAIN_MLL)
 
-$(EXECUTABLE): main.cmo
-	$(OCAMLC) -o $(EXECUTABLE) main.cmo
+# Compile to build/main.cmo (+ its .cmi into build/)
+$(BUILD)/main.cmo: $(GEN_ML) | $(BUILD)
+	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/main.cmo $(GEN_ML)
+	@([ -f main.cmi ] && mv -f main.cmi $(BUILD)/) || true
+
+# Link final executable at repo root
+$(EXECUTABLE): $(BUILD)/main.cmo
+	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/main.cmo
 
 run:
 	make clean && make && ./$(EXECUTABLE) $(SRC)
 
 clean:
-	rm -f $(EXECUTABLE) main.ml *.cmi *.cmo *.o *.cl-lex
+	rm -f $(EXECUTABLE) *.cl-lex
+	rm -rf $(BUILD)
 
 .PHONY: all run clean

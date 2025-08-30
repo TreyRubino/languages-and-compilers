@@ -98,6 +98,7 @@ feature:
 
 formal_list:
     | /* lambda */                          { [] }
+    | formal                                { [$1] }
     | formal COMMA formal_list              { $1 :: $3 } 
     ;
 
@@ -107,6 +108,7 @@ formal:
 
 expr_list:
     | /* lambda */                          { [] }
+    | expr                                  { [$1] }
     | expr COMMA expr_list                  { $1 :: $3 }
     ;
 
@@ -292,6 +294,7 @@ begin
         | Method(method_name, method_formals, method_type, method_body) ->
             fprintf f "method\n" ;
             serialize_identifier method_name ; 
+            fprintf f "%d\n" (List.length method_formals);  
             List.iter serialize_formal method_formals ; 
             serialize_identifier method_type ;
             serialize_expr method_body
