@@ -14,9 +14,9 @@ and feature =
 	| Method  of id * (formal list) * cool_type * expr
 and formal = id * cool_type
 and expr = {
-	loc : loc ;
-	expr_kind : expr_kind ;
-	mutable static_type : static_type option ;
+	loc : loc;
+	expr_kind : expr_kind;
+	mutable static_type : static_type option;
 }
 and expr_kind =
 	| Assign of id * expr
@@ -42,4 +42,4 @@ and expr_kind =
 	| Integer of string
 	| String of string
 	| True
-    | False
+  | False

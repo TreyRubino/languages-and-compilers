@@ -11,10 +11,10 @@ let main () =
 
 		(* Read AST from .cl-ast *)
 		let ast = read_program fin in
-		close_in fin ;
+		close_in fin;
 
 		(* Class universe *)
-		let base_classes = [ "Int" ; "String" ; "Bool" ; "IO" ; "Object" ] in
+		let base_classes = [ "Int"; "String"; "Bool"; "IO"; "Object" ] in
 		let user_classes = List.map (fun ((_, cname), _, _) -> cname) ast in
 		let all_classes = List.sort compare (base_classes @ user_classes) in
 
@@ -35,12 +35,12 @@ let main () =
 			in
 			builtins @ user_pairs
 		in
-		Hashtbl.clear parent_map ;
-		List.iter (fun (c, p) -> Hashtbl.replace parent_map c p) parent_pairs ;
+		Hashtbl.clear parent_map;
+		List.iter (fun (c, p) -> Hashtbl.replace parent_map c p) parent_pairs;
 
 		(* Seed method table *)
-		seed_builtins () ;
-		seed_user_methods ast ;
+		seed_builtins ();
+		seed_user_methods ast;
 
 		(* Basic class checks *)
 		List.iter (fun ((_cloc, _cname), inherits, _features) ->
@@ -48,22 +48,22 @@ let main () =
 			| None -> ()
 			| Some (iloc, iname) ->
 				if iname = "Int" then (
-					Printf.printf "ERROR: %s: Type-Check: Inheriting from forbidden class %s\n" iloc iname ;
+					Printf.printf "ERROR: %s: Type-Check: Inheriting from forbidden class %s\n" iloc iname;
 					exit 1
-				) ;
+				);
 				if not (List.mem iname all_classes) then (
-					Printf.printf "ERROR: %s: Type-Check: Inheriting from undefined class %s\n" iloc iname ;
+					Printf.printf "ERROR: %s: Type-Check: Inheriting from undefined class %s\n" iloc iname;
 					exit 1
 				)
-		) ast ;
+		) ast;
 
 		(* Type-check attributes and method bodies *)
 		List.iter (fun ((_, cname), _inherits, features) ->
-			type_check_class cname ((("",cname)), None, features)
-		) ast ;
+			type_check_class cname ((("", cname)), None, features)
+		) ast;
 
 		(* Write .cl-type *)
 		let outname = Filename.chop_extension fname ^ ".cl-type" in
 		write_all outname ast all_classes parent_pairs
-	end ;;
-main () ;;
+	end;;
+main ();;

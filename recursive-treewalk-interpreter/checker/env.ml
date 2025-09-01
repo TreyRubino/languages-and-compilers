@@ -9,21 +9,21 @@ let parent_map : (string, string) Hashtbl.t = Hashtbl.create 255
 
 (* ----- Method signatures ----- *)
 type method_sig = {
-	formals : string list ;
-	ret     : string ;
-	definer : string ;
+	formals :  string list;
+	ret :      string;
+	definer :  string;
 }
 
 let method_env : (string, (string, method_sig) Hashtbl.t) Hashtbl.t = Hashtbl.create 255
 
 let tbl_find_opt h k = try Some (Hashtbl.find h k) with Not_found -> None
 
-let get_class_methods (cls:string) : (string, method_sig) Hashtbl.t =
+let get_class_methods (cls : string) : (string, method_sig) Hashtbl.t =
 	match tbl_find_opt method_env cls with
 	| Some t -> t
 	| None ->
 		let t = Hashtbl.create 31 in
-		Hashtbl.add method_env cls t ;
+		Hashtbl.add method_env cls t;
 		t
 
 let add_method ~(cls:string) ~(name:string) ~(formals:string list) ~(ret:string) =
@@ -55,7 +55,7 @@ let seed_user_methods (ast : cool_program) =
 		) features
 	) ast
 
-let rec lookup_method_sig (cls:string) (mname:string) : method_sig option =
+let rec lookup_method_sig (cls : string) (mname : string) : method_sig option =
 	match tbl_find_opt method_env cls with
 	| Some t ->
 		(match tbl_find_opt t mname with

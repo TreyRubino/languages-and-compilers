@@ -127,4 +127,4 @@ and read_expr ic =
 		| "false" -> False
 		| x -> failwith ("expression kind unhandled: " ^ x)
 	in
-	{ loc = eloc ; expr_kind = ekind ; static_type = None }
+	{ loc = eloc; expr_kind = ekind; static_type = None }
