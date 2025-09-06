@@ -62,7 +62,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			let t1 = type_check current_class o x in
 			let t2 = type_check current_class o y in
 			if is_primitive t1 || is_primitive t2 then
-				if t1 <> t2 then raise TYPE_ERROR ;
+				if t1 <> t2 then raise TYPE_ERROR;
 			Class "Bool"
 
 		| Not e1 ->
@@ -84,17 +84,58 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			ignore (type_check current_class o b);
 			Class "Object"
 
-		| Let ((vloc, vname), (_tloc, tname), init_opt, body) ->
-			let declared = if tname = "SELF_TYPE" then SELF_TYPE current_class else Class tname in
-			Hashtbl.add o vname declared;
-			(match init_opt with
-			| None -> ()
-			| Some init ->
-			  let it = type_check current_class o init in
-				if not (is_subtype it declared) then raise TYPE_ERROR);
-			let bt = type_check current_class o body in
-			Hashtbl.remove o vname;
-			bt
+    | Let (bindings, body) ->
+        let cleanup = ref [] in
+        List.iter (fun ((vloc, vname), (_tloc, tname), init_opt) ->
+          let declared =
+            if tname = "SELF_TYPE" then SELF_TYPE current_class else Class tname
+          in
+          Hashtbl.add o vname declared;
+          cleanup := vname :: !cleanup;
+          (match init_opt with
+          | None -> ()
+          | Some init ->
+              let it = type_check current_class o init in
+              if not (is_subtype it declared) then raise TYPE_ERROR)
+        ) bindings;
+        let bt = type_check current_class o body in
+        List.iter (fun vname -> Hashtbl.remove o vname) !cleanup;
+        bt
+
+    | Case (scrut, branches) ->
+      (* Type-check scrutinee per rule; its type isn't otherwise used here *)
+      ignore (type_check current_class o scrut);
+
+      let seen = Hashtbl.create 31 in
+      let acc : static_type option ref = ref None in
+
+      List.iter (fun ((vloc, vname), (_tl, tname), br) ->
+        (* cannot bind 'self' *)
+        if vname = "self" then (
+          Printf.printf "ERROR: %s: Type-Check: cannot bind 'self' in case branch\n" vloc; exit 1
+        );
+        (* branch types must be distinct *)
+        if Hashtbl.mem seen tname then (
+          Printf.printf "ERROR: %s: Type-Check: duplicate branch type %s in case\n" expr.loc tname; exit 1
+        ) else Hashtbl.add seen tname true;
+
+        (* extend O with xi : Ti, type branch, then pop *)
+        let bound_ty =
+          if tname = "SELF_TYPE" then SELF_TYPE current_class else Class tname
+        in
+        Hashtbl.add o vname bound_ty;
+        let bt = type_check current_class o br in
+        Hashtbl.remove o vname;
+
+        (* accumulate LUB across branches *)
+        acc := (match !acc with
+          | None -> Some bt
+          | Some sofar -> Some (lub sofar bt current_class))
+      ) branches;
+
+      (match !acc with
+       | None -> Class "Object"  
+       | Some t -> t)
 
 		| New ((_, tname)) ->
 			if tname = "SELF_TYPE" then SELF_TYPE current_class else Class tname
@@ -138,12 +179,12 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			let rt = type_check current_class o recv in
 			let ann = tname in
 			(* receiver must be subtype of annotated type *)
-			if not (is_subtype rt (Class ann)) then raise TYPE_ERROR ;
+			if not (is_subtype rt (Class ann)) then raise TYPE_ERROR;
 			(match lookup_method_sig ann mname with
 			| None ->
 				Printf.printf "ERROR: %s: Type-Check: Unknown method %s on %s\n" expr.loc mname ann; exit 1
 			| Some sig_ ->
-				if List.length sig_.formals <> List.length args then raise TYPE_ERROR ;
+				if List.length sig_.formals <> List.length args then raise TYPE_ERROR;
 				List.iter2 (fun a ft ->
 					let at = type_check current_class o a in
 					if not (is_subtype at (Class ft)) then raise TYPE_ERROR
@@ -152,27 +193,55 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 					(* static dispatch to A::m has SELF_TYPE meaning A *)
 					Class ann
 				else Class sig_.ret)
+    | Block es ->
+      let rec go = function
+        | [] -> Class "Object"      (* defensive; blocks are non-empty in well-formed input *)
+        | [last] -> type_check current_class o last
+        | h::t -> ignore (type_check current_class o h); go t
+      in
+      go es
 	in
 	expr.static_type <- Some st;
 	st
 
 let type_check_class (cname : string) ((_id, _), _inherits, features) =
-	(* build object env with self + formals per method when checking *)
-	List.iter (fun feat ->
-		match feat with
-		| Attribute ((_aloc, _aname), (_tl, _tname), init_opt) ->
-			(* check attribute init if present in empty env with self available *)
-			(match init_opt with
-			| None -> ()
-			| Some e ->
-				let o = empty_object_env () in
-				Hashtbl.add o "self" (SELF_TYPE cname);
-				ignore (type_check cname o e))
-		| Method ((_mloc, _mname), formals, (_rtl, _rtype), body) ->
-			let o = empty_object_env () in
-			Hashtbl.add o "self" (SELF_TYPE cname);
-			List.iter (fun ((_fl,fname), (_tl,tname)) ->
-				Hashtbl.add o fname (if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname)
-			) formals;
-			ignore (type_check cname o body)
-	) features
+  List.iter (fun feat ->
+    match feat with
+    | Attribute ((_aloc, aname), (_tl, tname), init_opt) ->
+        (match init_opt with
+          | None -> ()
+          | Some e ->
+              let o = empty_object_env () in
+              Hashtbl.add o "self" (SELF_TYPE cname);
+
+              (* OC: inherited + own attributes *)
+              let attrs = Env.collect_attributes cname in
+              Hashtbl.iter (fun an tyname ->
+                if an <> "self" then
+                  Hashtbl.replace o an (if tyname = "SELF_TYPE" then SELF_TYPE cname else Class tyname)
+              ) attrs;
+
+              (* type-check init and enforce conformance to declared type *)
+              let it = type_check cname o e in
+              let declared = if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname in
+              if not (is_subtype it declared) then raise TYPE_ERROR)
+
+    | Method ((_mloc, _mname), formals, (_rtl, _rtype), body) ->
+        let o = empty_object_env () in
+        Hashtbl.add o "self" (SELF_TYPE cname);
+
+        (* OC: inherited + own attributes visible in methods *)
+        let attrs = Env.collect_attributes cname in
+        Hashtbl.iter (fun an tyname ->
+          if an <> "self" then
+            Hashtbl.replace o an (if tyname = "SELF_TYPE" then SELF_TYPE cname else Class tyname)
+        ) attrs;
+
+        (* Formals shadow attributes on name collisions *)
+        List.iter (fun ((_fl,fname), (_tl,tname)) ->
+          Hashtbl.add o fname (if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname)
+        ) formals;
+
+        ignore (type_check cname o body)
+  ) features
+

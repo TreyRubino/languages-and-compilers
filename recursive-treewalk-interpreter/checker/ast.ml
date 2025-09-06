@@ -23,7 +23,7 @@ and expr_kind =
 	| DynamicDispatch of expr * id * expr list
 	| StaticDispatch of expr * id * id * expr list
 	| SelfDispatch of id * expr list
-	| Let of id * id * (expr option) * expr
+  | Let of (id * id * expr option) list * expr 
 	| Case of expr * (id * id * expr) list
 	| If of expr * expr * expr
 	| While of expr * expr
@@ -43,3 +43,4 @@ and expr_kind =
 	| String of string
 	| True
   | False
+  | Block of expr list

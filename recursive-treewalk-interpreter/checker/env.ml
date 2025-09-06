@@ -71,6 +71,42 @@ let rec lookup_method_sig (cls : string) (mname : string) : method_sig option =
 			let parent = try Hashtbl.find parent_map cls with Not_found -> "Object" in
 			lookup_method_sig parent mname
 
+let attribute_env : (string, (string, string) Hashtbl.t) Hashtbl.t = Hashtbl.create 255
+
+let get_class_attributes (cls : string) : (string, string) Hashtbl.t = 
+  match tbl_find_opt attribute_env cls with
+  | Some t -> t
+  | None ->
+    let t = Hashtbl.create 31 in
+    Hashtbl.add attribute_env cls t;
+    t
+  
+let add_attribute ~(cls:string) ~(name:string) ~(typ:string) =
+  let t = get_class_attributes cls in
+  Hashtbl.replace t name typ
+
+let seed_user_attributes (ast : cool_program) = 
+  List.iter (fun ((_, cname), _inherits, features) ->
+    List.iter (function
+      | Attribute ((_, aname), (_tl, atype), _init) ->
+        add_attribute ~cls:cname ~name:aname ~typ:atype
+      | Method _ -> ()  
+    ) features
+  ) ast
+
+let collect_attributes (cls : string) : (string, string) Hashtbl.t = 
+  let acc = Hashtbl.create 31 in
+  let rec climb c = 
+    (match tbl_find_opt attribute_env c with
+    | Some t -> Hashtbl.iter (fun n ty -> Hashtbl.replace acc n ty) t 
+    | None -> ()); 
+    if c <> "Object" then
+      let p = try Hashtbl.find parent_map c with Not_found -> "Object" in
+      climb p 
+    in 
+    climb cls;
+    acc
+
 (* ----- Helpers ----- *)
 let type_to_str = function
 	| Class x -> x

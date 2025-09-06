@@ -87,11 +87,11 @@ rule token = parse
     | ['e' 'E']['l' 'L']['s' 'S']['e' 'E']                                      { ELSE }
     | ['c' 'C']['l' 'L']['a' 'A']['s' 'S']['s' 'S']                             { CLASS }
     | ['c' 'C']['a' 'A']['s' 'S']['e' 'E']                                      { CASE }
-    | ['e' 'C']['s' 'S']['a' 'A']['c' 'C']                                      { ESAC }
+    | ['e' 'E']['s' 'S']['a' 'A']['c' 'C']                                      { ESAC }
     | ['i' 'I']['n' 'N']['h' 'H']['e' 'E']['r' 'R']['i' 'I']['t' 'T']['s' 'S']  { INHERITS }
     | ['l' 'L']['o' 'O']['o' 'O']['p' 'P']                                      { LOOP }
     | ['p' 'P']['o' 'O']['o' 'O']['l' 'L']                                      { POOL }
-    | ['i' 'I']['s' 'S']['o' 'O']['i' 'I']['d' 'D']                             { ISVOID }
+    | ['i' 'I']['s' 'S']['v' 'V']['o' 'O']['i' 'I']['d' 'D']                    { ISVOID }
     | ['o' 'O']['f' 'F']                                                        { OF }
     | ['i' 'I']['n' 'N']                                                        { IN }
     | ['i' 'I']['f' 'F']                                                        { IF }
@@ -147,6 +147,7 @@ let serialize token line =
         | ELSE          -> "else"
         | CLASS         -> "class"
         | CASE          -> "case"
+        | ESAC          -> "esac"
         | INHERITS      -> "inherits"
         | LOOP          -> "loop"
         | POOL          -> "pool"

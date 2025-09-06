@@ -31,19 +31,21 @@ let rec output_expr (fout : out_channel) (e : expr) =
 		Printf.fprintf fout "%s\n%s\n" ml mn;
 		Printf.fprintf fout "%d\n" (List.length args);
 		List.iter (output_expr fout) args
-	| Let ((vloc, vname), (tloc, tname), init_opt, body) ->
-		Printf.fprintf fout "let\n";
-		(match init_opt with
-		| None ->
-			Printf.fprintf fout "let_binding_no_init\n";
-			Printf.fprintf fout "%s\n%s\n" vloc vname;
-			Printf.fprintf fout "%s\n%s\n" tloc tname
-		| Some init ->
-			Printf.fprintf fout "let_binding_init\n";
-			Printf.fprintf fout "%s\n%s\n" vloc vname;
-			Printf.fprintf fout "%s\n%s\n" tloc tname;
-			output_expr fout init);
-		output_expr fout body
+  | Let (bindings, body) ->
+      Printf.fprintf fout "let\n";
+      Printf.fprintf fout "%d\n" (List.length bindings);
+      List.iter (function
+        | (vloc, vname), (tloc, tname), None ->
+            Printf.fprintf fout "let_binding_no_init\n";
+            Printf.fprintf fout "%s\n%s\n" vloc vname;
+            Printf.fprintf fout "%s\n%s\n" tloc tname
+        | (vloc, vname), (tloc, tname), Some init ->
+            Printf.fprintf fout "let_binding_init\n";
+            Printf.fprintf fout "%s\n%s\n" vloc vname;
+            Printf.fprintf fout "%s\n%s\n" tloc tname;
+            output_expr fout init
+      ) bindings;
+      output_expr fout body
 	| Case (scrut, branches) ->
 		Printf.fprintf fout "case\n";
 		output_expr fout scrut;
@@ -78,8 +80,11 @@ let rec output_expr (fout : out_channel) (e : expr) =
 		Printf.fprintf fout "string\n%s\n" s
 	| True         -> Printf.fprintf fout "true\n"
 	| False        -> Printf.fprintf fout "false\n"
+  | Block es ->
+    Printf.fprintf fout "block\n";
+    Printf.fprintf fout "%d\n" (List.length es);
+    List.iter (output_expr fout) es
 
-(* ----- Implementation map helpers (same shape as your monolith) ----- *)
 let features_of (ast : cool_program) cname =
 	try
 		let _, _, feats = List.find (fun ((_, c2), _, _) -> c2 = cname) ast in
@@ -96,6 +101,21 @@ let parent_of (ast : cool_program) cname =
 			| None -> Some "Object"
 			| Some ((_, p)) -> Some p
 		with Not_found -> None
+
+let rec all_attributes_with_inits (ast : cool_program) (cname : string)
+  : (string (*aname*) * string (*atype*) * expr option) list =
+  let inherited =
+    match parent_of ast cname with
+    | None -> []
+    | Some p -> all_attributes_with_inits ast p
+  in
+  let own =
+    features_of ast cname
+    |> List.filter_map (function
+        | Attribute ((_, aname), (_, atype), init_opt) -> Some (aname, atype, init_opt)
+        | Method _ -> None)
+  in
+  inherited @ own
 
 let internal_methods cname =
 	let sort_by_name lst = List.sort (fun (n1,_,_,_,_,_) (n2,_,_,_,_,_) -> compare n1 n2) lst in
@@ -155,27 +175,24 @@ let rec methods_of_class ast cname =
 let write_all (fname : string) (ast : cool_program) (all_classes : string list) (parent_pairs : (string * string) list) =
 	let fout = open_out fname in
 
-	(* class_map *)
-	Printf.fprintf fout "class_map\n%d\n" (List.length all_classes);
-	List.iter (fun cname ->
-		Printf.fprintf fout "%s\n" cname;
-		let attributes =
-			try
-				let _, _, features = List.find (fun ((_, c2), _, _) -> c2 = cname) ast in
-				List.filter (function Attribute _ -> true | Method _ -> false) features
-			with Not_found -> []
-		in
-		Printf.fprintf fout "%d\n" (List.length attributes) ;
-		List.iter (fun attr ->
-			match attr with
-			| Attribute ((_, aname), (_, atype), None) ->
-				Printf.fprintf fout "no_initializer\n%s\n%s\n" aname atype
-			| Attribute ((_, aname), (_, atype), Some init) ->
-				Printf.fprintf fout "initializer\n%s\n%s\n" aname atype;
-				output_expr fout init
-			| Method _ -> ()
-		) attributes
-	) all_classes;
+  (* class_map *)
+  Printf.fprintf fout "class_map\n%d\n" (List.length all_classes);
+  List.iter (fun cname ->
+    Printf.fprintf fout "%s\n" cname;
+
+    (* include inherited + own attributes *)
+    let attributes = all_attributes_with_inits ast cname in
+
+    Printf.fprintf fout "%d\n" (List.length attributes);
+    List.iter (fun (aname, atype, init_opt) ->
+      match init_opt with
+      | None ->
+          Printf.fprintf fout "no_initializer\n%s\n%s\n" aname atype
+      | Some init ->
+          Printf.fprintf fout "initializer\n%s\n%s\n" aname atype;
+          output_expr fout init
+    ) attributes
+  ) all_classes;
 
 	(* implementation_map *)
 	Printf.fprintf fout "implementation_map\n";

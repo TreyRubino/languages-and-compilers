@@ -41,6 +41,7 @@ let main () =
 		(* Seed method table *)
 		seed_builtins ();
 		seed_user_methods ast;
+    seed_user_attributes ast;
 
 		(* Basic class checks *)
 		List.iter (fun ((_cloc, _cname), inherits, _features) ->
