@@ -14,7 +14,7 @@ GEN_ML     = $(YACC_BASE).ml
 GEN_MLI    = $(YACC_BASE).mli
 GEN_OUT    = $(YACC_BASE).output
 
-EXECUTABLE = parser
+EXECUTABLE = $(BUILD)/parser
 SRC        = two_class_test.cl-lex
 
 all: $(BUILD) $(EXECUTABLE)
@@ -32,15 +32,14 @@ $(BUILD)/main.cmo: $(GEN_ML) | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/main.cmo $(GEN_ML)
 	@([ -f main.cmi ] && mv -f main.cmi $(BUILD)/) || true
 
-# Link final executable at repo root
-$(EXECUTABLE): $(BUILD)/main.cmo
+# Link final executable into build/
+$(EXECUTABLE): $(BUILD)/main.cmo | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/main.cmo
 
 run:
 	$(MAKE) clean && $(MAKE) && ./$(EXECUTABLE) $(SRC)
 
 clean:
-	rm -f $(EXECUTABLE)
 	rm -rf $(BUILD)
 
 .PHONY: all run clean

@@ -10,7 +10,7 @@ BUILD    = build
 MAIN_MLL = main.mll
 GEN_ML   = $(BUILD)/main.ml
 
-EXECUTABLE = lexer
+EXECUTABLE = $(BUILD)/lexer
 SRC = two_class_test.cl
 
 all: $(BUILD) $(EXECUTABLE)
@@ -27,15 +27,15 @@ $(BUILD)/main.cmo: $(GEN_ML) | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/main.cmo $(GEN_ML)
 	@([ -f main.cmi ] && mv -f main.cmi $(BUILD)/) || true
 
-# Link final executable at repo root
-$(EXECUTABLE): $(BUILD)/main.cmo
+# Link final executable into build/
+$(EXECUTABLE): $(BUILD)/main.cmo | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/main.cmo
 
 run:
-	make clean && make && ./$(EXECUTABLE) $(SRC)
+	$(MAKE) clean && $(MAKE) && ./$(EXECUTABLE) $(SRC)
 
 clean:
-	rm -f $(EXECUTABLE) *.cl-lex
 	rm -rf $(BUILD)
+	rm -f *.cl-lex
 
 .PHONY: all run clean

@@ -3,10 +3,10 @@
 # @author   Trey Rubino
 # @date     07/01/2025
 
-LEXER="lexer/lexer"
-PARSER="parser/parser"
-CHECKER="checker/checker"
-INTERP="interpreter/interp"
+LEXER="lexer/build/lexer"
+PARSER="parser/build/parser"
+CHECKER="checker/build/checker"
+INTERP="interpreter/build/interp"
 
 COOL_FILE="test.cl"
 ERR_FILE="error.log"

@@ -5,10 +5,10 @@
 OCAMLC = ocamlc
 BUILD  = build
 
-EXECUTABLE = checker
+EXECUTABLE = $(BUILD)/checker
 SRC = test.cl-ast
 
-ML  = ast.ml env.ml reader.ml typecheck.ml writer.ml main.ml
+ML  = ast.ml env.ml reader.ml typecheck.ml writer.ml validate.ml main.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
 all: $(BUILD) $(EXECUTABLE)
@@ -21,8 +21,8 @@ $(BUILD)/%.cmo: %.ml | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $@ $<
 	@([ -f $*.cmi ] && mv -f $*.cmi $(BUILD)/) || true
 
-$(EXECUTABLE): $(CMO)
-	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(CMO)
+$(EXECUTABLE): $(CMO) | $(BUILD)
+	$(OCAMLC) -I $(BUILD) -o $@ $(CMO)
 
 run:
 	make clean && make && ./$(EXECUTABLE) $(SRC)
