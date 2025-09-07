@@ -102,12 +102,12 @@ let parent_of (ast : cool_program) cname =
 			| Some ((_, p)) -> Some p
 		with Not_found -> None
 
-let rec all_attributes_with_inits (ast : cool_program) (cname : string)
+let rec attributes_of (ast : cool_program) (cname : string)
   : (string (*aname*) * string (*atype*) * expr option) list =
   let inherited =
     match parent_of ast cname with
     | None -> []
-    | Some p -> all_attributes_with_inits ast p
+    | Some p -> attributes_of ast p
   in
   let own =
     features_of ast cname
@@ -152,11 +152,11 @@ let user_methods (ast:cool_program) cname =
 	in
 	collect [] feats
 
-let rec methods_of_class ast cname =
+let rec methods_of ast cname =
 	let inherited =
 		match parent_of ast cname with
 		| None -> []
-		| Some p -> methods_of_class ast p
+		| Some p -> methods_of ast p
 	in
 	let own_user = user_methods ast cname in
 	let overlay acc (n, fns, rt, def, body_opt, is_int) =
@@ -179,10 +179,7 @@ let write_all (fname : string) (ast : cool_program) (all_classes : string list) 
   Printf.fprintf fout "class_map\n%d\n" (List.length all_classes);
   List.iter (fun cname ->
     Printf.fprintf fout "%s\n" cname;
-
-    (* include inherited + own attributes *)
-    let attributes = all_attributes_with_inits ast cname in
-
+    let attributes = attributes_of ast cname in
     Printf.fprintf fout "%d\n" (List.length attributes);
     List.iter (fun (aname, atype, init_opt) ->
       match init_opt with
@@ -199,7 +196,7 @@ let write_all (fname : string) (ast : cool_program) (all_classes : string list) 
 	Printf.fprintf fout "%d\n" (List.length all_classes);
 	List.iter (fun cname ->
 		Printf.fprintf fout "%s\n" cname;
-		let methods = methods_of_class ast cname in
+		let methods = methods_of ast cname in
 		Printf.fprintf fout "%d\n" (List.length methods);
 		List.iter (fun (mname, fnames, rtype, definer, body_opt, is_internal) ->
 			Printf.fprintf fout "%s\n" mname;
@@ -256,7 +253,6 @@ let write_all (fname : string) (ast : cool_program) (all_classes : string list) 
 					Printf.fprintf fout "%s\n%s\n" ftloc ftname
 				) formals;
 				Printf.fprintf fout "%s\n%s\n" rtloc rtype;
-				(* reuse your already-annotated expression printer *)
 				output_expr fout body
 		) features
 	) ast;
