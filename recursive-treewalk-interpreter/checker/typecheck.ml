@@ -214,7 +214,6 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
               let o = empty_object_env () in
               Hashtbl.add o "self" (SELF_TYPE cname);
 
-              (* OC: inherited + own attributes *)
               let attrs = Env.collect_attributes cname in
               Hashtbl.iter (fun an tyname ->
                 if an <> "self" then
@@ -230,7 +229,6 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
         let o = empty_object_env () in
         Hashtbl.add o "self" (SELF_TYPE cname);
 
-        (* OC: inherited + own attributes visible in methods *)
         let attrs = Env.collect_attributes cname in
         Hashtbl.iter (fun an tyname ->
           if an <> "self" then

@@ -6,7 +6,7 @@
 open Ast
 open Env
 
-let dups_and_base_validation ~base_classes (ast : cool_program) =
+let dups_base_validation ~base_classes (ast : cool_program) =
   let seen = Hashtbl.create 255 in
   List.iter (fun ((cloc, cname), _inherits, _features) ->
     if List.mem cname base_classes then (
@@ -21,7 +21,7 @@ let dups_and_base_validation ~base_classes (ast : cool_program) =
   ) ast
 
 let parent_validation ~all_classes (ast : cool_program) =
-  let forbidden = ["Int"; "Bool"; "String"; "SELF_TYPE"] in  (* IO is allowed *)
+  let forbidden = ["Int"; "Bool"; "String"; "SELF_TYPE"] in  
   (* local checks *)
   List.iter (fun ((_cloc, cname), inherits, _features) ->
     match inherits with
@@ -127,5 +127,57 @@ let override_validation (ast : cool_program) =
     ) features
   ) ast
 
+let names_scoping_validation (ast : cool_program) =
+  List.iter (fun ((_, cname), _inherits, features) ->
+    let parent =
+      try Hashtbl.find parent_map cname with Not_found -> "Object"
+    in
+    let inherited_attrs = 
+      if cname = "Object" then Hashtbl.create 1 else collect_attributes parent
+    in
 
+    let seen_attrs = Hashtbl.create 31 in
+    let seen_meths = Hashtbl.create 31 in 
+
+    List.iter (function
+      | Attribute ((aloc, aname), _, _) ->
+        (* no self as attr *)
+        if aname = "self" then (
+          Printf.printf "ERROR: %s: Type-Check: attribute cannot be named self\n" aloc;
+          exit 1
+        );  
+        (* no duplicate attributes inside the same class *)
+        if Hashtbl.mem seen_attrs aname then (
+          Printf.printf "ERROR: %s: Type-Check: duplicate attribute %s in class %s\n" aloc aname cname;
+          exit 1
+        );
+        Hashtbl.add seen_attrs aname true;
+        (* no attribute redefinition from ancestors *)
+        if Hashtbl.mem inherited_attrs aname then (
+          Printf.printf "ERROR: %s: Type-Check: attribute %s redefined from ancestor in class %s\n" aloc aname cname;
+          exit 1
+        )
+      | Method ((mloc, mname), formals, _ret, _body) ->
+        (* no duplicate methods inside the same class *)
+        if Hashtbl.mem seen_meths mname then (
+          Printf.printf "ERROR: %s: Type-Check: duplicate method %s in class %s\n" mloc mname cname;
+          exit 1
+        );
+        Hashtbl.add seen_meths mname true;
+
+        (* formals need to be unique and not self *)
+        let seen_formals = Hashtbl.create 31 in
+        List.iter (fun ((floc, fname), _fty) ->
+          if fname = "self" then (
+            Printf.printf "ERROR: %s: Type-Check: formal cannot be named self\n" floc;
+            exit 1
+          );
+          if Hashtbl.mem seen_formals fname then (
+            Printf.printf "ERROR: %s: Type-Check: duplicate formal %s in method %s\n" floc fname mname;
+            exit 1
+          );
+          Hashtbl.add seen_formals fname true
+        ) formals
+    ) features
+  ) ast
 

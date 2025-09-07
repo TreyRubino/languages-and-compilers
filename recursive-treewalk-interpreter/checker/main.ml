@@ -16,7 +16,7 @@ let main () =
 
 		(* Class universe *)
 		let base_classes = [ "Int"; "String"; "Bool"; "IO"; "Object" ] in
-    dups_and_base_validation ~base_classes ast;
+    dups_base_validation ~base_classes ast;
 
 		let user_classes = List.map (fun ((_, cname), _, _) -> cname) ast in
 		let all_classes = List.sort compare (base_classes @ user_classes) in
@@ -46,10 +46,12 @@ let main () =
 
 		(* Seed method table *)
 		seed_builtins ();
+
 		seed_user_methods ast;
     override_validation ast;
-    
+
     seed_user_attributes ast;
+    names_scoping_validation ast;
 
 		(* Type-check attributes and method bodies *)
 		List.iter (fun ((_, cname), _inherits, features) ->
