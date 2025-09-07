@@ -47,6 +47,8 @@ let main () =
 		(* Seed method table *)
 		seed_builtins ();
 		seed_user_methods ast;
+    override_validation ast;
+    
     seed_user_attributes ast;
 
 		(* Type-check attributes and method bodies *)

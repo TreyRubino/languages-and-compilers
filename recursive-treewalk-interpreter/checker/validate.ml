@@ -74,12 +74,12 @@ let decl_types_validation ~all_classes (ast : cool_program) =
           exit 1
         );
         if not (type_exists tname) then (
-          Printf.printf "ERROR: %s: Type-Check: Unknown type %s" tloc tname;
+          Printf.printf "ERROR: %s: Type-Check: Unknown type %s\n" tloc tname;
           exit 1
         );
       | Method ((_mloc, _mname), formals, (rtloc, rtype), _body) -> 
         if rtype <> "SELF_TYPE" && not (type_exists rtype) then (
-          Printf.printf "ERROR: %s: Type-Check: Unknown return type %s\n" rtloc, rtype;
+          Printf.printf "ERROR: %s: Type-Check: Unknown return type %s\n" rtloc rtype;
           exit 1 
         );  
         List.iter (fun ((_floc, _fname), (ftloc, ftname)) -> 
@@ -88,9 +88,44 @@ let decl_types_validation ~all_classes (ast : cool_program) =
             exit 1
           );
           if not (type_exists ftname) then (
-            Printf.printf "ERROR: %s Type-Check: Unknown type %s\n" ftloc ftname;
+            Printf.printf "ERROR: %s: Type-Check: Unknown type %s\n" ftloc ftname;
             exit 1
           )
         ) formals
     ) features
   ) ast
+
+(* 
+method override compatibility
+for any method a class defines that also exists in an ancestor, 
+verify the signature matches exactly 
+*)
+let override_validation (ast : cool_program) = 
+  List.iter (fun ((_, cname), _inherits, features) -> 
+    let parent = try Hashtbl.find parent_map cname with Not_found -> "Object" in
+    List.iter(function
+      | Method ((mloc, mname), formals, (_rtloc, rtype), _body) -> 
+        (match lookup_method_sig parent mname with
+        | None -> ()
+        | Some parent_sig -> 
+          let child_formals = List.map (fun (_fid, (_tl, tn)) -> tn) formals in
+          if List.length parent_sig.formals <> List.length child_formals then (
+            Printf.printf "ERROR: %s: Type-Check: Redefining method %s with different arity\n" mloc mname;
+            exit 1
+          );
+          List.iter2 (fun p c ->
+            if p <> c then (
+              Printf.printf "ERROR: %s: Type-Check: Redefining method %s with different parameter types\n" mloc mname;
+              exit 1
+            )
+          ) parent_sig.formals child_formals;
+          if parent_sig.ret <> rtype then (
+            Printf.printf "ERROR: %s: Type-Check: Redefining method %s with different return type\n" mloc mname;
+            exit 1
+          ))
+      | Attribute _ -> () 
+    ) features
+  ) ast
+
+
+
