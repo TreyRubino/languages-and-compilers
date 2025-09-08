@@ -243,6 +243,7 @@ let unserialize infile =
         | "dot"         -> DOT(l)
         | "comma"       -> COMMA(l)
         | "colon"       -> COLON(l)
+        | "equals"      -> EQUALS(l)
         | "rbrace"      -> RBRACE(l)
         | "lbrace"      -> LBRACE(l)
         | "rparen"      -> RPAREN(l)

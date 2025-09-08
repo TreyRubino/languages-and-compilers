@@ -14,6 +14,7 @@ type token =
     | AT
     | LT
     | SEMI
+    | EQUALS
     | TILDE
     | DOT
     | COMMA
@@ -63,6 +64,7 @@ rule token = parse
     | '-'			                                                            { MINUS }
     | '*' 		                                                                { TIMES }
     | '/' 		                                                                { DIVIDE }
+    | '='                                                                       { EQUALS }
     | '@'                                                                       { AT }
     | '<'                                                                       { LT }
     | ';'                                                                       { SEMI }
@@ -142,6 +144,7 @@ let serialize token line =
         | TRUE          -> "true"
         | FALSE         -> "false"
         | NEW           -> "new"
+        | EQUALS        -> "equals"
         | NOT           -> "not"
         | LET           -> "let"
         | ELSE          -> "else"

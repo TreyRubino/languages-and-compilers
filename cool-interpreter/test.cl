@@ -1,30 +1,79 @@
-class A {
-  a_val : Int <- 41;
-};
-
-class B inherits A {
-  b_msg       : String <- "B";
-  from_a_copy : Int    <- a_val;        -- uses inherited attribute in initializer
-  get_a_plus_one() : Int { a_val + 1 }; -- uses inherited attribute in method body
-};
-
 class Main inherits IO {
-  my_attr : Int <- 5 + 5;               -- init conformance check (Int)
+    main() : SELF_TYPE {
+        (let c : Complex <- (new Complex).init(1, 1) in
+            {
+                -- trivially equal (see CoolAid)
+                if c.reflect_X() = c.reflect_0()
+                then out_string("passed\n")
+                else out_string("failed\n")
+                fi;
+                -- equal
+                if c.reflect_X().reflect_Y().equal(c.reflect_0())
+                then out_string("passed\n")
+                else out_string("failed\n")
+                fi;
+            }
+        )
+    };
+};
 
-  main() : Object {
-    {
-      out_string("Hello, world.\n");
-      out_int((new B).get_a_plus_one());  -- 42
+class Complex inherits IO {
+    x : Int;
+    y : Int;
 
-      -- Case: branches return Int and String → LUB(Object)
-      let o : Object <-
-        case new B of
-          x : A  => 1;
-          y : IO => "io";
-        esac
-      in
-        if isvoid o then abort() else o fi 
-      ;
-    }
-  };
+    init(a : Int, b : Int) : Complex {
+        {
+            x <- a;
+            y <- b;
+            self;
+        }
+    };
+
+    print() : Object {
+        if y = 0
+        then out_int(x)
+        else out_int(x).out_string("+").out_int(y).out_string("I")
+        fi
+    };
+
+    reflect_0() : Complex {
+        {
+            x <- ~x;
+            y <- ~y;
+            self;
+        }
+    };
+
+    reflect_X() : Complex {
+        {
+            y <- ~y;
+            self;
+        }
+    };
+
+    reflect_Y() : Complex {
+        {
+            x <- ~x;
+            self;
+        }
+    };
+
+    equal(d : Complex) : Bool {
+        if x = d.x_value()
+        then
+            if y = d.y_value()
+            then true
+            else false
+            fi
+        else false
+        fi
+    };
+
+    x_value() : Int {
+        x
+    };
+
+    y_value() : Int {
+        y
+    };
 };

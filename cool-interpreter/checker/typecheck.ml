@@ -10,17 +10,21 @@ let class_exists (t : string) : bool =
   t = "Object" || Hashtbl.mem parent_map t
 
 let rec lub (t1 : static_type) (t2 : static_type) (self_cls : string) : static_type =
-  let norm = function SELF_TYPE _ -> Class self_cls | x -> x in
-  match norm t1, norm t2 with
-  | Class a, Class b ->
-    let rec climb_a ca =
-      if is_subtype (Class b) (Class ca) then Class ca
-      else
-        let p = try Hashtbl.find parent_map ca with Not_found -> "Object" in
-        if ca = "Object" then Class "Object" else climb_a p
-    in
-    climb_a a
-  | _ -> Class "Object"
+  (* if both branches are SELF_TYPE, the join is SELF_TYPE *)
+  match t1, t2 with
+  | SELF_TYPE _, SELF_TYPE _ -> SELF_TYPE self_cls
+  | _ ->
+    let norm = function SELF_TYPE _ -> Class self_cls | x -> x in
+    match norm t1, norm t2 with
+    | Class a, Class b ->
+      let rec climb_a ca =
+        if is_subtype (Class b) (Class ca) then Class ca
+        else
+          let p = try Hashtbl.find parent_map ca with Not_found -> "Object" in
+          if ca = "Object" then Class "Object" else climb_a p
+      in
+      climb_a a
+    | _ -> Class "Object"
 
 let rec type_check (current_class : string) (o : object_env) (expr : expr) : static_type =
 	let check (exprs : expr list) (expected : string) =
