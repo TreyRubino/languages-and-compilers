@@ -30,9 +30,9 @@ and read_cool_class ic =
 and read_feature ic =
   match read ic with
   | "attribute_no_init" ->
-      let atype = read_id ic in
       let aname = read_id ic in
-      Attribute(atype, aname, None)
+      let atype = read_id ic in
+      Attribute(aname, atype, None)
   | "attribute_init" ->
       let aname = read_id ic in
       let atype = read_id ic in

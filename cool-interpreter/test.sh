@@ -15,7 +15,6 @@ CLEANUP_FILES=(
     "${COOL_FILE}-lex"
     "${COOL_FILE}-ast"
     "${COOL_FILE}-type"
-    "result.txt"
 )
 
 build_stage() 
@@ -103,7 +102,7 @@ case "$1" in
         build_stage "checker"
         run_stage "$CHECKER" "${COOL_FILE}-ast" "${COOL_FILE}-type"
         build_stage "interpreter"
-        run_stage "$INTERP" "${COOL_FILE}-type" "result.txt"
+        run_stage "$INTERP" "${COOL_FILE}-type" "error.log"
         ;;
 
     *)
