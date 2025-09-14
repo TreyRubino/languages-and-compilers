@@ -65,3 +65,57 @@ let new_object_defaults (env : runtime_env) (cls : string) : obj =
       Hashtbl.replace fields aname (ref (default_of_type atype)));
   { cls; fields }
 
+(*
+centralized runtime error message and exit handler 
+*)
+let runtime_error (loc : string) (msg : string) : 'a = 
+  Printf.printf "ERROR: %s: Exception: %s\n" loc msg;
+  exit 1
+
+(*
+lexing scoping for variables
+variables scope is determined by its physical location
+in the source code rather than the order in which functions
+are called at runtime
+*)
+
+type scope = (string, value ref) Hashtbl.t
+
+let new_scope () : scope = Hashtbl.create 31 
+
+let push_scope (s : scope) (stack : scope list) : scope list = s :: stack
+
+let pop_scope (stack : scope list) : scope list = 
+  match stack with 
+  | _ :: tl -> tl
+  | [] -> failwith "pop_scope: empty stack"
+
+let bind_local (stack : scope list) (name : string) (v : value) : unit = 
+  match stack with
+  | s :: _ -> Hashtbl.replace s name (ref v)
+  | [] -> failwith "bind_local: no active scope"
+
+let rec lookup_local_cell (stack : scope list) (name : string) : (value ref) option =
+  match stack with
+  | s :: tl -> (try Some (Hashtbl.find s name) with Not_found -> lookup_local_cell tl name)
+  | [] -> None
+
+let lookup_field_cell (self : obj) (name : string) : (value ref) option = 
+  try Some (Hashtbl.find self.fields name) with Not_found -> None
+
+let lookup_value ~(self:obj) (stack : scope list) (name : string) : value option = 
+  match lookup_local_cell stack name with
+  | Some cell -> Some !cell
+  | None -> 
+    if name = "self" then Some (VObj self)
+    else 
+      match lookup_field_cell self name with
+      | Some cell -> Some !cell
+      | None -> None
+
+let lookup_lvalue_cell ~(self:obj) (stack : scope list) (name : string) : (value ref) option = 
+  if name = "self" then None
+  else 
+    match lookup_local_cell stack name with
+    | Some cell -> Some cell
+    | None -> lookup_field_cell self name
