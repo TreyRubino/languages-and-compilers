@@ -4,7 +4,7 @@ OCAMLC := ocamlc
 BUILD  := build
 EXECUTABLE := $(BUILD)/interp
 
-ML  := ast.ml reader.ml main.ml
+ML  := ast.ml reader.ml runtime.ml main.ml
 CMO := $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
 SRC ?= test.cl-type
