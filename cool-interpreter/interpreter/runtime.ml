@@ -73,18 +73,17 @@ let runtime_error (loc : string) (msg : string) : 'a =
   exit 1
 
 (*
-lexing scoping for variables
+lexing (static) scoping for variables
 variables scope is determined by its physical location
 in the source code rather than the order in which functions
 are called at runtime
 *)
 
+(* activation record for each block/let/method *)
 type scope = (string, value ref) Hashtbl.t
-
 let new_scope () : scope = Hashtbl.create 31 
 
 let push_scope (s : scope) (stack : scope list) : scope list = s :: stack
-
 let pop_scope (stack : scope list) : scope list = 
   match stack with 
   | _ :: tl -> tl

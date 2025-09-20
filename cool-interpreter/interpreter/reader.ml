@@ -133,15 +133,11 @@ let rec read_expr_from ic eloc : expr =
     | "eq"     -> let a = read_expr ic in let b = read_expr ic in Equals (a, b)
     | "not"    -> Not (read_expr ic)
     | "negate" -> Tilde (read_expr ic)
-
-    | "identifier" ->
-        Identifier (read_id ic)
-
+    | "identifier" -> Identifier (read_id ic)
     | "integer" -> Integer (read ic)
     | "string"  -> String (read ic)
     | "true"    -> True
     | "false"   -> False
-
     | "block" ->
         let es = read_list ic read_expr in
         Block es

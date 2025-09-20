@@ -283,7 +283,6 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
         let bt = type_check cname o body in
         let declared = if rtype = "SELF_TYPE" then SELF_TYPE cname else Class rtype in
         if not (is_subtype bt declared) then (
-          (* spec: use method name identifier location *)
           Printf.printf "ERROR: %s: Type-Check: Method body type does not conform to declared return\n" mloc;
           exit 1
         )

@@ -6,6 +6,7 @@
 open Ast
 open Env
 
+(* has a base class been redefined? or has a user class been duplicated? *)
 let dups_base_validation ~base_classes (ast : cool_program) =
   let seen = Hashtbl.create 255 in
   List.iter (fun ((cloc, cname), _inherits, _features) ->
@@ -20,6 +21,7 @@ let dups_base_validation ~base_classes (ast : cool_program) =
     Hashtbl.add seen cname true
   ) ast
 
+(* inheritance type problems *)
 let parent_validation ~all_classes (ast : cool_program) =
   let forbidden = ["Int"; "Bool"; "String"; "SELF_TYPE"] in  
   (* local checks *)
@@ -57,6 +59,7 @@ let parent_validation ~all_classes (ast : cool_program) =
           Hashtbl.replace color c 2;
           cyc
   in
+  (* is there an inheritance cycle? *)
   List.iter (fun c ->
     if c <> "Object" && dfs c then (
       Printf.printf "ERROR: 0: Type-Check: Inheritance cycle\n"; 
@@ -181,6 +184,7 @@ let names_scoping_validation (ast : cool_program) =
     ) features
   ) ast
 
+(* is main class defined and has no parameters? *)
 let main_validation (ast : Ast.cool_program) =
   match List.find_opt (fun ((_, cname), _, _) -> cname = "Main") ast with
   | None ->
