@@ -17,6 +17,14 @@ let bool_of_value (loc : string) (v : value) : bool =
   | VBool b -> b
   | _ -> runtime_error loc "boolean operation on non-Bool"
 
+let class_of_value (v : value) : string = 
+  match v with
+  | VInt _ -> "Int"
+  | VBool _ -> "Bool"
+  | VString _ -> "String"
+  | VObj o -> o.cls
+  | VVoid -> "Object"
+
 let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : value = 
   match e.expr_kind with
   | Integer s -> VInt (int_of_string s)
@@ -106,14 +114,59 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | head :: tail -> 
         ignore (eval env ~self ~scopes head); 
         eval_list tail
-    in 
+    in
     eval_list exprs
+  | If (pred, then_br, else_br) -> 
+    let pred_v = eval env ~self ~scopes pred in
+    let pred_b = bool_of_value e.loc pred_v in 
+    if pred_b then eval env ~self ~scopes then_br
+    else eval env ~self ~scopes else_br
+  | While (pred, body) -> 
+    let rec loop () = 
+      let pred_v = eval env ~self ~scopes pred in
+      let pred_b = bool_of_value pred.loc pred_v in
+      if pred_b then (
+        ignore (eval env ~self ~scopes body); 
+        loop ()
+      ) else VVoid
+    in 
+    loop ()
+  | Let (bindings, body) ->
+    let scope = new_scope () in
+    let scopes' = push_scope scope scopes in
+    List.iter (fun ((loc, name), (_, ty), init_opt) -> 
+      let v = 
+        match init_opt with
+        | Some init -> eval env ~self ~scopes:scopes' init
+        | None -> default_of_type ty
+      in 
+      bind_local scopes' name v 
+    ) bindings; 
+    let result = eval env ~self ~scopes:scopes' body in
+    result
+  | Case (scrut, branches) ->
+    let scrut_v = eval env ~self ~scopes scrut in
+    (match scrut_v with
+    | VVoid -> runtime_error scrut.loc "case on void"
+    | _ -> 
+      let dynamic_cls = class_of_value scrut_v in
+      let ancestry_list = ancestry env.parent_map dynamic_cls in
+      let chosen = 
+        List.find_opt (fun (_, (_, ty), _) -> 
+          (* check whether any element of ancestry list is equal to ty *)
+          List.exists ((=) ty) ancestry_list
+        ) branches
+      in
+      match chosen with
+      | None -> 
+        runtime_error e.loc ("no matching case branch for " ^ dynamic_cls)
+      | Some ((loc, name), (_, ty), body) ->
+        let scope = new_scope () in 
+        let scopes' = push_scope scope scopes in
+        bind_local scopes' name scrut_v;
+        eval env ~self ~scopes:scopes' body) 
   | DynamicDispatch _
   | StaticDispatch _
   | SelfDispatch _
-  | Let _ 
-  | Case _ 
-  | If _ 
-  | While _ 
   | New _ -> 
       runtime_error e.loc "unimplemented"
