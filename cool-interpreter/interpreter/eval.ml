@@ -165,8 +165,26 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
         let scopes' = push_scope scope scopes in
         bind_local scopes' name scrut_v;
         eval env ~self ~scopes:scopes' body) 
+  | New (_loc, ty) ->
+    let cls = 
+      if ty = "SELF_TYPE" then self.cls
+      else ty
+    in 
+    let obj = new_object_defaults env cls in
+    run_initializers env obj ~scopes;
+    VObj obj
   | DynamicDispatch _
   | StaticDispatch _
-  | SelfDispatch _
-  | New _ -> 
+  | SelfDispatch _ -> 
       runtime_error e.loc "unimplemented"
+
+and run_initializers (env : runtime_env) (obj : obj) ~(scopes:scope list) : unit = 
+  attributes_linearized env obj.cls
+  |> List.iter (fun { aname; init; _} -> 
+    match init with
+    | None -> ()
+    | Some expr -> 
+      let expr_v = eval env ~self:obj ~scopes expr in
+      let cell = Hashtbl.find obj.fields aname in
+      cell := expr_v
+  )
