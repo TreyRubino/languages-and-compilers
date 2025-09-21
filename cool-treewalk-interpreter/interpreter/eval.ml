@@ -173,10 +173,31 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
     let obj = new_object_defaults env cls in
     run_initializers env obj ~scopes;
     VObj obj
-  | DynamicDispatch _
-  | StaticDispatch _
-  | SelfDispatch _ -> 
-      runtime_error e.loc "unimplemented"
+  | DynamicDispatch (recv, (_, mname), args) -> 
+    let recv_v = eval env ~self ~scopes recv in
+    (match recv_v with
+    | VVoid -> runtime_error e.loc "dynamic dispatch on void"
+    | VObj o -> 
+      let args_v = List.map (eval env ~self ~scopes) args in
+      (match lookup_method env o.cls mname with
+      | Some impl -> call_method env ~recv:o ~scopes impl args_v
+      | None -> runtime_error e.loc ("method not found: " ^ mname))
+    | _ -> runtime_error e.loc "dynamic dispatch on non-object")
+  | StaticDispatch (recv, (_, ty), (_, mname), args) -> 
+    let recv_v = eval env ~self ~scopes recv in
+    (match recv_v with
+    | VVoid -> runtime_error e.loc "static dispatch on void"
+    | VObj o -> 
+      let args_v = List.map (eval env ~self ~scopes) args in
+      (match lookup_method env ty mname with
+      |Some impl -> call_method env ~recv:o ~scopes impl args_v
+      | None -> runtime_error e.loc ("method not found: " ^ mname))
+    | _ -> runtime_error e.loc "static dispatch on non-object")
+  | SelfDispatch ((_, mname), args) -> 
+    let args_v = List.map (eval env ~self ~scopes) args in
+    (match lookup_method env self.cls mname with 
+    | Some impl -> call_method env ~recv:self ~scopes impl args_v
+    | None -> runtime_error e.loc ("method not found: " ^ mname))
 
 and run_initializers (env : runtime_env) (obj : obj) ~(scopes:scope list) : unit = 
   attributes_linearized env obj.cls
@@ -188,3 +209,15 @@ and run_initializers (env : runtime_env) (obj : obj) ~(scopes:scope list) : unit
       let cell = Hashtbl.find obj.fields aname in
       cell := expr_v
   )
+
+and call_method (env : runtime_env) ~(recv:obj) ~(scopes:scope list) (impl:method_impl) (args:value list) : value = 
+  match impl.body with
+  | User body -> 
+    let scope = new_scope () in
+    let scopes' = push_scope scope scopes in
+    List.iter2 (fun formal arg -> 
+      bind_local scopes' formal arg
+    ) impl.formals args;
+    eval env ~self:recv ~scopes:scopes' body
+  | Internal { qname; _ } -> 
+    runtime_error "0" ("internal method not yet implemented: " ^ qname)

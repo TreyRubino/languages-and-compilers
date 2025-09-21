@@ -8,8 +8,8 @@ PARSER="parser/build/parser"
 CHECKER="checker/build/checker"
 INTERP="interpreter/build/interp"
 
-COOL_FILE="test.cl"
-ERR_FILE="error.log"
+COOL_FILE="tests/test.cl"
+ERR_FILE="tests/error.log"
 
 CLEANUP_FILES=(
     "${COOL_FILE}-lex"
@@ -102,7 +102,7 @@ case "$1" in
         build_stage "checker"
         run_stage "$CHECKER" "${COOL_FILE}-ast" "${COOL_FILE}-type"
         build_stage "interpreter"
-        run_stage "$INTERP" "${COOL_FILE}-type" "error.log"
+        run_stage "$INTERP" "${COOL_FILE}-type" "tests/error.log"
         ;;
 
     *)

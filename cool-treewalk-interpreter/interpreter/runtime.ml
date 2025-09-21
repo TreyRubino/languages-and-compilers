@@ -66,6 +66,17 @@ let new_object_defaults (env : runtime_env) (cls : string) : obj =
   { cls; fields }
 
 (*
+given the runtime env, loop up the class name in implementation map 
+then look up the specific method name given the class
+*)
+let lookup_method (env : runtime_env) (cls : string) (mname : string) : method_impl option = 
+  try 
+    let methods = Hashtbl.find env.impl_map cls in
+    try Some (Hashtbl.find methods mname)
+    with Not_found -> None 
+  with Not_found -> None
+
+(*
 centralized runtime error message and exit handler 
 *)
 let runtime_error (loc : string) (msg : string) : 'a = 
