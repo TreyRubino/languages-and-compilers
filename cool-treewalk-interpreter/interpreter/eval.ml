@@ -25,6 +25,43 @@ let class_of_value (v : value) : string =
   | VObj o -> o.cls
   | VVoid -> "Object"
 
+let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value list) : value = 
+  match qname, args with
+  | "Object.abort", _ ->
+    runtime_error loc "abort"
+  | "Object.type_name", _ -> 
+    VString recv.cls
+  | "Object.copy", _ -> 
+    let new_fields = Hashtbl.create (Hashtbl.length recv.fields) in
+    Hashtbl.iter (fun k cell -> Hashtbl.replace new_fields k (ref !cell)) recv.fields;
+    VObj { cls = recv.cls; fields = new_fields }
+
+  | "IO.out_string", [VString s] ->
+    print_string s; 
+    flush stdout;
+    VObj recv
+  | "IO.out_int", [VInt i] -> 
+    print_int i;
+    flush stdout; 
+    VObj recv
+  | "IO.in_string", _ -> 
+    let line = try read_line () with End_of_file -> "" in
+    VString line
+  | "IO.in_int", _ -> 
+    let line = try read_line () with End_of_file -> "0" in
+    (try VInt (int_of_string line) with Failure _ -> VInt 0)
+
+  | "String.length", [VString s] ->
+    VInt (String.length s)
+  | "String.concat", [VString s1; VString s2] -> 
+    VString (s1 ^ s2)
+  | "String.substring", [VString s; VInt i; VInt l] -> 
+    if i < 0 || l < 0 || i + l > String.length s then
+      runtime_error loc "substring out of range"
+    else 
+      VString (String.sub s i l)
+  | _ -> runtime_error loc ("internal method not implemented: " ^ qname)
+
 let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : value = 
   match e.expr_kind with
   | Integer s -> VInt (int_of_string s)
@@ -220,4 +257,4 @@ and call_method (env : runtime_env) ~(recv:obj) ~(scopes:scope list) (impl:metho
     ) impl.formals args;
     eval env ~self:recv ~scopes:scopes' body
   | Internal { qname; _ } -> 
-    runtime_error "0" ("internal method not yet implemented: " ^ qname)
+    dispatch_internal "0" recv qname args

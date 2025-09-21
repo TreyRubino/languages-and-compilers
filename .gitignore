@@ -1,4 +1,5 @@
 .DS_Store
 .vscode/
 build/
-tests/
+test/
+reference/
