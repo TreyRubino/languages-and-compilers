@@ -7,10 +7,18 @@ open Ast
 open Reader
 open Runtime
 
+let string_of_value (v : value) : string =
+  match v with
+  | VVoid -> "VVoid"
+  | VInt i -> "VInt(" ^ string_of_int i ^ ")"
+  | VBool b -> "VBool(" ^ string_of_bool b ^ ")"
+  | VString s -> "VString(" ^ s ^ ")"
+  | VObj o -> "VObj(" ^ o.cls ^ ")"
+
 let int_of_value (loc : string) (v : value) : int = 
   match v with
   | VInt i -> i
-  | _ -> runtime_error loc "arithmetic/comparison on non-Int"
+  | _ -> runtime_error loc ("arithmetic/comparison on non-Int, got " ^ string_of_value v)
 
 let bool_of_value (loc : string) (v : value) : bool =
   match v with
@@ -35,7 +43,6 @@ let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value
     let new_fields = Hashtbl.create (Hashtbl.length recv.fields) in
     Hashtbl.iter (fun k cell -> Hashtbl.replace new_fields k (ref !cell)) recv.fields;
     VObj { cls = recv.cls; fields = new_fields }
-
   | "IO.out_string", [VString s] ->
     print_string s; 
     flush stdout;
@@ -50,16 +57,6 @@ let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value
   | "IO.in_int", _ -> 
     let line = try read_line () with End_of_file -> "0" in
     (try VInt (int_of_string line) with Failure _ -> VInt 0)
-
-  | "String.length", [VString s] ->
-    VInt (String.length s)
-  | "String.concat", [VString s1; VString s2] -> 
-    VString (s1 ^ s2)
-  | "String.substring", [VString s; VInt i; VInt l] -> 
-    if i < 0 || l < 0 || i + l > String.length s then
-      runtime_error loc "substring out of range"
-    else 
-      VString (String.sub s i l)
   | _ -> runtime_error loc ("internal method not implemented: " ^ qname)
 
 let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : value = 
@@ -219,6 +216,16 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       (match lookup_method env o.cls mname with
       | Some impl -> call_method env ~recv:o ~scopes impl args_v
       | None -> runtime_error e.loc ("method not found: " ^ mname))
+    | VString s ->
+      let args_v = List.map (eval env ~self ~scopes) args in
+      (match mname, args_v with
+      | "length", [] -> VInt (String.length s)
+      | "concat", [VString s2] -> VString (s ^ s2)
+      | "substr", [VInt i; VInt l] ->
+        if i < 0 || l < 0 || i + l > String.length s then
+          runtime_error e.loc "substring out of range"
+        else VString (String.sub s i l)
+      | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | _ -> runtime_error e.loc "dynamic dispatch on non-object")
   | StaticDispatch (recv, (_, ty), (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
@@ -229,6 +236,16 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       (match lookup_method env ty mname with
       |Some impl -> call_method env ~recv:o ~scopes impl args_v
       | None -> runtime_error e.loc ("method not found: " ^ mname))
+    | VString s ->
+      let args_v = List.map (eval env ~self ~scopes) args in
+      (match mname, args_v with
+      | "length", [] -> VInt (String.length s)
+      | "concat", [VString s2] -> VString (s ^ s2)
+      | "substr", [VInt i; VInt l] ->
+        if i < 0 || l < 0 || i + l > String.length s then
+          runtime_error e.loc "substring out of range"
+        else VString (String.sub s i l)
+      | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | _ -> runtime_error e.loc "static dispatch on non-object")
   | SelfDispatch ((_, mname), args) -> 
     let args_v = List.map (eval env ~self ~scopes) args in
