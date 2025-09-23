@@ -221,7 +221,7 @@ case_list:
 
 %%
 
-let unserialize infile = 
+let deserialize infile = 
   let in_channel = open_in infile in
   let queue = Queue.create () in
   let get_line () = input_line in_channel in
@@ -284,7 +284,7 @@ let unserialize infile =
 let main () = 
 begin  
   let infile = Sys.argv.(1) in
-  let queue = unserialize infile in
+  let queue = deserialize infile in
   let lexbuf = Lexing.from_string "" in 
   let last_line_number = ref "1" in
   let token lb = 
