@@ -224,7 +224,7 @@ case_list:
 let unserialize infile = 
   let in_channel = open_in infile in
   let queue = Queue.create () in
-  let get_line () = String.trim (input_line in_channel) in
+  let get_line () = input_line in_channel in
   try 
     while true do
       let l = get_line () in

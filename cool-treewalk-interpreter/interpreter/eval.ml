@@ -33,6 +33,26 @@ let class_of_value (v : value) : string =
   | VObj o -> o.cls
   | VVoid -> "Object"
 
+let unescape (s : string) : string =
+  let buf = Buffer.create (String.length s) in
+  let rec loop i =
+    if i >= String.length s then ()
+    else
+      match s.[i] with
+      | '\\' when i + 1 < String.length s ->
+        (match s.[i+1] with
+        | 'n'  -> Buffer.add_char buf '\n'; loop (i+2)
+        | 't'  -> Buffer.add_char buf '\t'; loop (i+2)
+        | 'b'  -> Buffer.add_char buf '\b'; loop (i+2)
+        | 'f'  -> Buffer.add_char buf '\012'; loop (i+2)
+        | '"'  -> Buffer.add_char buf '"'; loop (i+2)
+        | '\\' -> Buffer.add_char buf '\\'; loop (i+2)
+        | c    -> Buffer.add_char buf c; loop (i+2))
+      | c -> Buffer.add_char buf c; loop (i+1)
+  in
+  loop 0;
+  Buffer.contents buf
+
 let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value list) : value = 
   match qname, args with
   | "Object.abort", _ ->
@@ -44,9 +64,10 @@ let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value
     Hashtbl.iter (fun k cell -> Hashtbl.replace new_fields k (ref !cell)) recv.fields;
     VObj { cls = recv.cls; fields = new_fields }
   | "IO.out_string", [VString s] ->
-    print_string s; 
-    flush stdout;
-    VObj recv
+      let unesc = unescape s in
+      print_string unesc;
+      flush stdout;
+      VObj recv
   | "IO.out_int", [VInt i] -> 
     print_int i;
     flush stdout; 
@@ -76,7 +97,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       let v = eval env ~self ~scopes rhs in
       (match lookup_lvalue_cell ~self scopes name with
       | Some cell -> 
-        cell := v; 
+        cell := v;
         v
       | None -> 
         runtime_error loc ("unbound identifier " ^ name))
