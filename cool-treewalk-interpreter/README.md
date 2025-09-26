@@ -26,6 +26,7 @@ Windows is not supported directly, if you’re on Windows, use **WSL** (Windows 
 
 ### macOS Prerequisite
 Install [Homebrew](https://brew.sh) if you haven’t already.
+---
 
 ### 1. Install `opam` (OCaml’s package manager)
 ```
