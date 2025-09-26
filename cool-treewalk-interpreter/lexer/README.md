@@ -27,6 +27,17 @@ overly long strings, or EOF conditions for clean and centralized error handling 
 The main rule set handles operators, delimiters, and keywords with explicit patterns. Identifiers and types are distinguished by
 case convention (lowercase for identifiers, uppercase for types). Strings enforce a maximum length of 1024 characters. Nested
 comments are supported through a recursive `comment` rule with depth tracking. The `main` function drives tokenization, serializes 
-tokens with line numbers, and writes them to a `-lex` output file for later consumption by The Parser. Error messages are reported with line numbers to aid debugging and to satisfy the specifications provided.
+tokens with line numbers, and writes them to a `-lex` output file for later consumption by The Parser. Error messages are reported 
+with line numbers to aid debugging and to satisfy the specifications provided.
 
 ## References
+[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
+[Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf
+
+[2] “Lexical analysis,” Wikipedia: The Free Encyclopedia, Sep. 2, 2025. 
+[Online]. Available: https://en.wikipedia.org/wiki/Lexical_analysis
+
+[3] “Video Guide - PA2 Lexer - OCaml” YouTube, uploaded by westleyweimer6512, 
+[Online]. Available: https://www.youtube.com/watch?v=GpPIzjJSWls&t=194s
+
+[4] A. V. Aho, J. D. Ullman, R. Sethi, and M. S. Lam, Compilers: Principles, Techniques, and Tools, 2nd ed., ch. 3, “Lexical Analysis,” Pearson/Addison-Wesley, 2006.
