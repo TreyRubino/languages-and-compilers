@@ -10,9 +10,9 @@ Dr. Schwesinger
                   semantics for COOL, handling object creation, method dispatch, control flow and expression evaluation.
 - `lexer/`: Lexical analysis phase. Contains OCamllex scanner definition that tokenizes COOL source files 
             into a stream of tokens.
-- `parser/`: Parsing phase. Users OCamlyacc to transform token streams into abstract syntax tree (ASTs) 
+- `parser/`: Parsing phase. Uses OCamlyacc to transform token streams into abstract syntax tree (ASTs) 
              according to COOL grammar.
-- `tests/`: Contains COOL library of COOL programs to test the interpreter on. Covers a wide range of 
+- `tests/`: Contains library of COOL programs to test the interpreter on. Covers a wide range of 
             functionality for all parts of this project. Specific unit tests are found in the individual directories.
 - `cool-manual.pdf`: The official COOL language specification and reference manual used for grammar, 
                      semantics, and test conformance.
@@ -71,8 +71,7 @@ in the language manual.
 OCaml was chosen not only for technical advantages but also for its alignment with the goals of the project. As a language used 
 heavily in research and teaching of programming language theory, OCaml provides the rigor needed for correctness, the 
 flexibility needed for experimentation, and the performance found in the industry. This makes it an ideal platform for implementing a 
-pedagogical interpreter that is faithful to the COOL specification while remaining extensible for future enhancements such as 
-bytecode generation or garbage collection.
+pedagogical interpreter that is faithful to the COOL specification while remaining extensible for future enhancements.
 
 ## Build & Run Instructions
 This project is intended for Unix based environments (macOS or Linux).  
@@ -157,4 +156,4 @@ a copy of the second edition of the Dragon Book, which became my entry point int
 this project.  
 
 Dr. Schwesinger, thank you for opening my eyes to what truly defines the "magic" of computers and puts the "science" in computer science. 
-Your mentorship has reshaped not only this project, but my entire perspective on the field, and put in motion my depth into graduate school.
+Your mentorship has reshaped not only this project, but my entire perspective on the field.

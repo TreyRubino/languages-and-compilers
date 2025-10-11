@@ -39,6 +39,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 		) exprs;
 		Class expected
 	in
+  (* static type *)
 	let st =
 		match expr.expr_kind with
 		| Integer _ -> Class "Int"
@@ -61,13 +62,13 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 				else raise TYPE_ERROR
 			else (Printf.printf "ERROR: %s: Type-Check: Undeclared variable %s\n" vloc vname; exit 1)
 
-		| Plus (x, y)  -> check [x; y] "Int"
-		| Minus (x, y) -> check [x; y] "Int"
-		| Times (x, y) -> check [x; y] "Int"
-		| Divide (x, y)-> check [x; y] "Int"
-		| Tilde x     -> check [x]   "Int"
-		| Lt (x, y)    -> ignore (check [x; y] "Int"); Class "Bool"
-		| Le (x, y)    -> ignore (check [x; y] "Int"); Class "Bool"
+		| Plus (x, y)   -> check [x; y] "Int"
+		| Minus (x, y)  -> check [x; y] "Int"
+		| Times (x, y)  -> check [x; y] "Int"
+		| Divide (x, y) -> check [x; y] "Int"
+		| Tilde x       -> check [x]   "Int"
+		| Lt (x, y)     -> ignore (check [x; y] "Int"); Class "Bool"
+		| Le (x, y)     -> ignore (check [x; y] "Int"); Class "Bool"
 
 		| Equals (x, y) ->
 			let t1 = type_check current_class o x in
@@ -125,7 +126,6 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
         bt
 
     | Case (scrut, branches) ->
-      (* Type-check scrutinee per rule; its type isn't otherwise used here *)
       ignore (type_check current_class o scrut);
 
       let seen = Hashtbl.create 31 in
@@ -236,7 +236,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 				else Class sig_.ret)
     | Block es ->
       let rec go = function
-        | [] -> Class "Object"      (* defensive; blocks are non-empty in well-formed input *)
+        | [] -> Class "Object"      
         | [last] -> type_check current_class o last
         | h::t -> ignore (type_check current_class o h); go t
       in

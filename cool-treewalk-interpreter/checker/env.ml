@@ -4,16 +4,13 @@ open Ast
 
 exception TYPE_ERROR
 
-(* ----- Parent map (class -> parent) ----- *)
 let parent_map : (string, string) Hashtbl.t = Hashtbl.create 255
 
-(* ----- Method signatures ----- *)
 type method_sig = {
 	formals :  string list;
 	ret :      string;
 	definer :  string;
 }
-
 let method_env : (string, (string, method_sig) Hashtbl.t) Hashtbl.t = Hashtbl.create 255
 
 let tbl_find_opt h k = try Some (Hashtbl.find h k) with Not_found -> None
@@ -107,7 +104,6 @@ let collect_attributes (cls : string) : (string, string) Hashtbl.t =
     climb cls;
     acc
 
-(* ----- Helpers ----- *)
 let type_to_str = function
 	| Class x -> x
 	| SELF_TYPE _ -> "SELF_TYPE"

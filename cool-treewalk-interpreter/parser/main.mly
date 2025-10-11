@@ -70,7 +70,7 @@ type program = structure list
 %left DOT
 
 %type <program> program
-%type <expr> expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base
+%type <expr> expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base atom
 %type <call_suffix list> primary_suffixes
 %type <call_suffix> primary_suffix
 %type <expr list> expr_list block_elems
@@ -123,10 +123,6 @@ expr_list:
 
 expr:
     IDENTIFIER LARROW expr                      { let (l,_) = $1 in (l, Assign($1, $3)) }
-  | IF expr THEN expr ELSE expr FI              { ($1, If($2, $4, $6)) }
-  | WHILE expr LOOP expr POOL                   { ($1, While($2, $4)) }
-  | LET let_binding_list IN expr                { ($1, Let($2, $4)) }
-  | CASE expr OF case_list ESAC                 { ($1, Case($2, $4)) }
   | cmp_expr                                    { $1 }
   ;
 
@@ -153,8 +149,16 @@ unary_expr:
     TILDE  unary_expr                           { ($1, Tilde($2)) }
   | NOT    unary_expr                           { ($1, Not($2)) }
   | ISVOID unary_expr                           { ($1, Isvoid($2)) }
-  | primary_expr                                { $1 }
+  | atom                                        { $1 }
   ;
+
+atom: 
+    IF expr THEN expr ELSE expr FI              { ($1, If($2, $4, $6)) }
+  | WHILE expr LOOP expr POOL                   { ($1, While($2, $4)) }
+  | LET let_binding_list IN expr                { ($1, Let($2, $4)) }
+  | CASE expr OF case_list ESAC                 { ($1, Case($2, $4)) }
+  | primary_expr { $1 }
+  ; 
 
 primary_expr:
     primary_base primary_suffixes

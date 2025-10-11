@@ -3,13 +3,15 @@
 # @author   Trey Rubino
 # @date     07/01/2025
 
-LEXER="lexer/build/lexer"
-PARSER="parser/build/parser"
-CHECKER="checker/build/checker"
-INTERP="interpreter/build/interp"
+ROOT_DIR="$(dirname "$0")/.."
 
-COOL_FILE="test/test.cl"
-ERR_FILE="test/error.log"
+LEXER="$ROOT_DIR/lexer/build/lexer"
+PARSER="$ROOT_DIR/parser/build/parser"
+CHECKER="$ROOT_DIR/checker/build/checker"
+INTERP="$ROOT_DIR/interpreter/build/interp"
+
+COOL_FILE="$ROOT_DIR/test/cool-examples/cells.cl"
+ERR_FILE="$ROOT_DIR/test/error.log"
 
 CLEANUP_FILES=(
     "${COOL_FILE}-lex"
@@ -58,7 +60,7 @@ usage()
 
 clean() 
 {
-    cd "$(dirname "$0")" || exit 1
+    cd "$ROOT_DIR" || exit 1
     : > "$ERR_FILE"
     for f in "${CLEANUP_FILES[@]}"; do
         [[ -f "$f" ]] && rm -f "$f"

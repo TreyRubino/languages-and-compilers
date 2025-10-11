@@ -80,6 +80,9 @@ let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value
     (try VInt (int_of_string line) with Failure _ -> VInt 0)
   | _ -> runtime_error loc ("internal method not implemented: " ^ qname)
 
+(* hash table to keep track of objects that are being constructed*)
+let constructing : (string, obj) Hashtbl.t = Hashtbl.create 8
+
 let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : value = 
   match e.expr_kind with
   | Integer s -> VInt (int_of_string s)
@@ -145,7 +148,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
     | VInt i1, VInt i2 -> VBool (i1 = i2)
     | VBool b1, VBool b2 -> VBool (b1 = b2)
     | VString s1, VString s2 -> VBool (s1 = s2) (* structural eqaulity *)
-    | VObj o1, VObj o2 -> VBool (o1 == o2) (* obj physical equality *)
+    | VObj o1, VObj o2 -> VBool (o1 == o2) (* obj reference equality *)
     | VVoid, _ | _, VVoid -> VBool false
     | _ -> VBool (lhs_v == rhs_v)) (* fallback to reference equality *)
   | Isvoid expr ->
@@ -221,13 +224,27 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
         bind_local scopes' name scrut_v;
         eval env ~self ~scopes:scopes' body) 
   | New (_loc, ty) ->
-    let cls = 
-      if ty = "SELF_TYPE" then self.cls
-      else ty
-    in 
-    let obj = new_object_defaults env cls in
-    run_initializers env obj ~scopes;
-    VObj obj
+    let cls =
+      if ty = "SELF_TYPE" then self.cls else ty
+    in
+    (* 
+    bug found during hair scary evaluation
+    endless recursion on acyclic object creation
+    to solve this, we keep track of objects in construction,
+    and instead of starting construction over again, 
+    grab the incomplete instance, and continue construction 
+    from that point.
+    else begin a new construction
+    *)
+    if Hashtbl.mem constructing cls then
+      VObj (Hashtbl.find constructing cls)
+    else (
+      let obj = new_object_defaults env cls in
+      Hashtbl.replace constructing cls obj;
+      run_initializers env obj ~scopes;
+      Hashtbl.remove constructing cls;
+      VObj obj
+    )
   | DynamicDispatch (recv, (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
     (match recv_v with
@@ -246,7 +263,17 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
         if i < 0 || l < 0 || i + l > String.length s then
           runtime_error e.loc "substring out of range"
         else VString (String.sub s i l)
+      | "type_name", _ -> VString (class_of_value recv_v)
+      | "copy", _ -> recv_v
+      | "abort", _ -> runtime_error e.loc "abort"
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
+    | VInt _ | VBool _ ->
+      let args_v = List.map (eval env ~self ~scopes) args in
+      (match mname with
+      | "type_name" -> VString (class_of_value recv_v)
+      | "copy" -> recv_v
+      | "abort" -> runtime_error e.loc "abort"
+      | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v))
     | _ -> runtime_error e.loc "dynamic dispatch on non-object")
   | StaticDispatch (recv, (_, ty), (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
@@ -266,7 +293,17 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
         if i < 0 || l < 0 || i + l > String.length s then
           runtime_error e.loc "substring out of range"
         else VString (String.sub s i l)
+      | "type_name", _ -> VString (class_of_value recv_v)
+      | "copy", _ -> recv_v
+      | "abort", _ -> runtime_error e.loc "abort"
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
+    | VInt _ | VBool _ ->
+      let args_v = List.map (eval env ~self ~scopes) args in
+      (match mname with
+      | "type_name" -> VString (class_of_value recv_v)
+      | "copy" -> recv_v
+      | "abort" -> runtime_error e.loc "abort"
+      | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v))
     | _ -> runtime_error e.loc "static dispatch on non-object")
   | SelfDispatch ((_, mname), args) -> 
     let args_v = List.map (eval env ~self ~scopes) args in
@@ -284,12 +321,12 @@ and run_initializers (env : runtime_env) (obj : obj) ~(scopes:scope list) : unit
       let cell = Hashtbl.find obj.fields aname in
       cell := expr_v
   )
-
-and call_method (env : runtime_env) ~(recv:obj) ~(scopes:scope list) (impl:method_impl) (args:value list) : value = 
+  
+and call_method (env : runtime_env) ~(recv:obj) ~(scopes:scope list) (impl : method_impl) (args : value list) : value = 
   match impl.body with
   | User body -> 
     let scope = new_scope () in
-    let scopes' = push_scope scope scopes in
+    let scopes' = push_scope scope [] in
     List.iter2 (fun formal arg -> 
       bind_local scopes' formal arg
     ) impl.formals args;

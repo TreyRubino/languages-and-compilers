@@ -112,20 +112,20 @@ let rec lookup_local_cell (stack : scope list) (name : string) : (value ref) opt
 
 let lookup_field_cell (self : obj) (name : string) : (value ref) option = 
   try Some (Hashtbl.find self.fields name) with Not_found -> None
-
-let lookup_value ~(self:obj) (stack : scope list) (name : string) : value option = 
+  
+let lookup_value ~(self:obj) (stack : scope list) (name : string) : value option =
   if name = "self" then Some (VObj self)
   else
-    match lookup_field_cell self name with
+    match lookup_local_cell stack name with
     | Some cell -> Some !cell
     | None ->
-        match lookup_local_cell stack name with
-        | Some cell -> Some !cell
-        | None -> None
+      (match lookup_field_cell self name with
+      | Some cell -> Some !cell
+      | None -> None)
 
 let lookup_lvalue_cell ~(self:obj) (stack : scope list) (name : string) : (value ref) option = 
   if name = "self" then None
   else
-    match lookup_field_cell self name with
+    match lookup_local_cell stack name with
     | Some cell -> Some cell
-    | None -> lookup_local_cell stack name
+    | None -> lookup_field_cell self name
