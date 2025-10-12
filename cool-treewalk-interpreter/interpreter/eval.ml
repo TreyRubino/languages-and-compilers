@@ -268,13 +268,12 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | "abort", _ -> runtime_error e.loc "abort"
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | VInt _ | VBool _ ->
-      let args_v = List.map (eval env ~self ~scopes) args in
+      let _ = List.map (eval env ~self ~scopes) args in
       (match mname with
       | "type_name" -> VString (class_of_value recv_v)
       | "copy" -> recv_v
       | "abort" -> runtime_error e.loc "abort"
-      | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v))
-    | _ -> runtime_error e.loc "dynamic dispatch on non-object")
+      | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v)))
   | StaticDispatch (recv, (_, ty), (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
     (match recv_v with
@@ -298,13 +297,12 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | "abort", _ -> runtime_error e.loc "abort"
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | VInt _ | VBool _ ->
-      let args_v = List.map (eval env ~self ~scopes) args in
+      let _ = List.map (eval env ~self ~scopes) args in
       (match mname with
       | "type_name" -> VString (class_of_value recv_v)
       | "copy" -> recv_v
       | "abort" -> runtime_error e.loc "abort"
-      | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v))
-    | _ -> runtime_error e.loc "static dispatch on non-object")
+      | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v)))
   | SelfDispatch ((_, mname), args) -> 
     let args_v = List.map (eval env ~self ~scopes) args in
     (match lookup_method env self.cls mname with 

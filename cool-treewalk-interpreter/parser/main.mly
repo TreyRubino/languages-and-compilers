@@ -43,10 +43,6 @@ and let_binding =
   | LetBindingInit of identifier * identifier * expr
 and expr = string * expr_internal
 
-type call_suffix =
-  | CallDyn  of identifier * (expr list)                       (* .f(args) *)
-  | CallStat of identifier (* TYPE *) * identifier * (expr list)  (* @T.f(args) *)
-
 type program = structure list
 %}
 
@@ -71,8 +67,6 @@ type program = structure list
 
 %type <program> program
 %type <expr> expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base atom
-%type <call_suffix list> primary_suffixes
-%type <call_suffix> primary_suffix
 %type <expr list> expr_list block_elems
 
 %start program
@@ -161,19 +155,11 @@ atom:
   ; 
 
 primary_expr:
-    primary_base primary_suffixes
-      {
-        let rec fold recv = function
-          | [] -> recv
-          | CallDyn (m, args) :: tl ->
-              let (line, _) = recv in
-              fold (line, DynamicDispatch(recv, m, args)) tl
-          | CallStat (ty, m, args) :: tl ->
-              let (line, _) = recv in
-              fold (line, StaticDispatch(recv, ty, m, args)) tl
-        in
-        fold $1 $2
-      }
+    primary_base  { $1 }
+  | primary_expr DOT IDENTIFIER LPAREN expr_list RPAREN
+      { let (line, _) = $1 in (line, DynamicDispatch($1, $3, $5)) }
+  | primary_expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN
+      { let (line, _) = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
   ;
 
 primary_base:
@@ -186,17 +172,6 @@ primary_base:
   | STRING                                      { let (line, lit) = $1 in (line, String(lit)) }
   | TRUE                                        { ($1, True) }
   | FALSE                                       { ($1, False) }
-  ;
-
-primary_suffixes:
-    /* lambda */                                { [] }
-  | primary_suffix primary_suffixes             { $1 :: $2 }
-  ;
-
-primary_suffix:
-    DOT IDENTIFIER LPAREN expr_list RPAREN      { CallDyn ($2, $4) }
-  | AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN
-                                                { CallStat ($2, $4, $6) }
   ;
 
 block_elems:

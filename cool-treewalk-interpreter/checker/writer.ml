@@ -162,7 +162,7 @@ let rec methods_of ast cname =
 	let overlay acc (n, fns, rt, def, body_opt, is_int) =
 		let rec replace = function
 			| [] -> [ (n, fns, rt, def, body_opt, is_int) ]
-			| ((n2,_,_,_,_,_) as e) :: tl when n2 = n -> (n, fns, rt, def, body_opt, is_int) :: tl
+			| ((n2,_,_,_,_,_)) :: tl when n2 = n -> (n, fns, rt, def, body_opt, is_int) :: tl
 			| e :: tl -> e :: replace tl
 		in
 		if List.exists (fun (n2,_,_,_,_,_) -> n2 = n) acc then replace acc

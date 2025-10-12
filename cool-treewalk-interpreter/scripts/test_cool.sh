@@ -10,7 +10,7 @@ PARSER="$ROOT_DIR/parser/build/parser"
 CHECKER="$ROOT_DIR/checker/build/checker"
 INTERP="$ROOT_DIR/interpreter/build/interp"
 
-COOL_FILE="$ROOT_DIR/test/cool-examples/cells.cl"
+COOL_FILE="$ROOT_DIR/$2"
 ERR_FILE="$ROOT_DIR/test/error.log"
 
 CLEANUP_FILES=(
@@ -69,7 +69,7 @@ clean()
 
 clean
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -ne 2 ]]; then
     usage
     exit 1
 fi
