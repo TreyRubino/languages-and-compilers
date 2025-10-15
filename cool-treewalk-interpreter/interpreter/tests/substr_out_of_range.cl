@@ -1,3 +1,9 @@
+(*
+test showcases the reaction of the interpreter when 
+a substr is requested that is out of range of the base string.
+*)
+
+
 class Main inherits IO {
   s : String <- "I guess we'll get started.";
   main() : Object {

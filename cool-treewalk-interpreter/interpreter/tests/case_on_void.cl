@@ -4,7 +4,7 @@ to a case statement on a void.
 *)
 
 class A {
-  var : Object <- new A; (* expecting type Int, but has not been defined, only declared. *)
+  var : Object; (* expecting type Int, but has not been defined, only declared. *)
   getVar() : Object { var };
 };
 

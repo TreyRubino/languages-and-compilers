@@ -12,10 +12,8 @@ class Main inherits IO {
   main() : Object {
     if isvoid a then {
       a.get();
-      out_string("Not void\n");
     } else {
-      out_string("Void\n");
-      0;
+      out_string("Not void\n");
     } fi
   };
 };
