@@ -31,4 +31,7 @@ for error reporting. The parser integrates with the lexer output by deserializin
 feeding them into OCamlyacc's parsing engine. On syntax errors, the parser reports the offending token and line number,
 then exits cleanly. Successfully parsed programs are serialized as `.cl-ast` files for later semantic analysis.
 
+## Testing
+Testing for The Parser involved structural manipulation of a COOL program to verify that syntactically correct were parsed correctly and that invalid programs were rejected with explicitly error messages.
+
 ## References

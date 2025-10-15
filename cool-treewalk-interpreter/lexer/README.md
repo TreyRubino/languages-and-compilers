@@ -30,6 +30,10 @@ comments are supported through a recursive `comment` rule with depth tracking. T
 tokens with line numbers, and writes them to a `-lex` output file for later consumption by The Parser. Error messages are reported 
 with line numbers to aid debugging and to satisfy the specifications provided.
 
+## Testing
+Testing and test cases for The Lexer were straightforward and testing the lexical structure of a COOL program. 
+Scope of testing was token matching, EOF, white space, null characters, string length, comments (single and multiple depth) and correct line number tracking.
+
 ## References
 [1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
 [Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf

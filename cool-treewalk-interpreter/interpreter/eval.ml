@@ -33,6 +33,13 @@ let class_of_value (v : value) : string =
   | VObj o -> o.cls
   | VVoid -> "Object"
 
+let index_of x lst =
+  let rec aux i = function
+    | [] -> max_int
+    | y :: ys -> if x = y then i else aux (i + 1) ys
+  in
+  aux 0 lst
+
 let unescape (s : string) : string =
   let buf = Buffer.create (String.length s) in
   let rec loop i =
@@ -205,24 +212,38 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
   | Case (scrut, branches) ->
     let scrut_v = eval env ~self ~scopes scrut in
     (match scrut_v with
-    | VVoid -> runtime_error scrut.loc "case on void"
-    | _ -> 
+    | VVoid ->
+      runtime_error scrut.loc "case on void"
+    | _ ->
       let dynamic_cls = class_of_value scrut_v in
       let ancestry_list = ancestry env.parent_map dynamic_cls in
-      let chosen = 
-        List.find_opt (fun (_, (_, ty), _) -> 
-          (* check whether any element of ancestry list is equal to ty *)
+      (* all branches whose declared type is an ancestor of the dynamic class *)
+      let matching =
+        List.filter (fun (_, (_, ty), _) ->
           List.exists ((=) ty) ancestry_list
         ) branches
       in
+      (* pick the branch with the smallest ancestry "distance"  *)
+      let chosen =
+        match matching with
+        | [] -> None
+        | _ ->
+          Some (
+            List.hd
+              (List.sort
+                (fun (_, (_, t1), _) (_, (_, t2), _) ->
+                  compare (index_of t1 ancestry_list) (index_of t2 ancestry_list))
+                matching)
+          )
+      in
       match chosen with
-      | None -> 
+      | None ->
         runtime_error e.loc ("no matching case branch for " ^ dynamic_cls)
-      | Some ((loc, name), (_, ty), body) ->
-        let scope = new_scope () in 
+      | Some ((_, name), _, body) ->
+        let scope = new_scope () in
         let scopes' = push_scope scope scopes in
         bind_local scopes' name scrut_v;
-        eval env ~self ~scopes:scopes' body) 
+        eval env ~self ~scopes:scopes' body)
   | New (_loc, ty) ->
     let cls =
       if ty = "SELF_TYPE" then self.cls else ty

@@ -40,6 +40,9 @@ Validation routines check structural correctness prior to type checking, ensurin
 to COOL's rules. On success, the system produces `.cl-type` file containing the class map, implementation map, parent map, and annotated
 AST, forming the input to later runtime phases.
 
+## Testing
+Injecting scripts with invalid types. Reading a COOL program by its lexical structure, matching on random type and identifiers swapper there position. We need cases that parse correctly, so running the the reference compiler over the generated "injected" scripts to confirm functionality and then delta debugging of how the hand-rolled interpreter handles these cases. Programs were used as data, and the reference compiler was analyze extracting string literals into a large corpus and then analyzed further to extract specific error cases or error messages.
+
 ## References  
 [1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
 [Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf

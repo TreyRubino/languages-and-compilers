@@ -34,4 +34,8 @@ formals. Attribute initialization is applied in ancestor to descendant order as 
 static, and self dispatch fully supported, with `SELF_TYPE` handled by resolving to the runtime class of `self`. On error, 
 the system prints a location tagged runtime message and exits, ensuring deterministic and auditable behavior.
 
+## Testing
+Functionality for object aliasing, SELF_TYPE dynamic resolution, and static and dynamic dispatching to showcase 
+the runtime, and managed heap is structurally and functionality verified. Delta debugging was used here in further edge case debugging since it (delta debugging) can over generalize on the test cases and cause some programs to become lexical, syntactically, or semantically invalid. In this phase we want well structured and typed programs that would create a runtime exception or is probably handling cases like object aliasing. A few other testing cases verify dispatch on void, heap management, no match case branch, and all built-ins handle their interactions according the the COOL Reference Manual.
+
 ## References
