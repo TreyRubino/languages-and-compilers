@@ -114,7 +114,7 @@ and comment depth start_line = parse
   | "(*"                                                                      { comment (depth + 1) start_line lexbuf }
   | "*)"                                                                      { if depth = 1 then token lexbuf else comment (depth - 1) start_line lexbuf }
   | '\n'                                                                      { Lexing.new_line lexbuf ; comment depth start_line lexbuf }
-  | eof                                                                       { raise EOF }
+  | eof                                                                       { raise NO_CLOSURE }
   | _                                                                         { comment depth start_line lexbuf }
 
 {
@@ -182,6 +182,7 @@ begin
     with 
     | UNKNOWN     -> Printf.printf "ERROR: %d: Lexer: Invalid character: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
     | MAX_LENGTH  -> Printf.printf "ERROR: %d: Lexer: String constant is too long: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
+    | NO_CLOSURE  -> Printf.printf "ERROR: %d: Lexer: EOF in comment\n"(lexbuf.lex_curr_p.pos_lnum + 1); exit 1
     | EOF         -> 
       begin
         try 

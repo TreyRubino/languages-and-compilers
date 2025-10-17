@@ -116,7 +116,8 @@ expr_list:
   ;
 
 expr:
-    IDENTIFIER LARROW expr                      { let (l,_) = $1 in (l, Assign($1, $3)) }
+    /* empty */                                 { ("", Block []) }
+  |  IDENTIFIER LARROW expr                     { let (l,_) = $1 in (l, Assign($1, $3)) }
   | cmp_expr                                    { $1 }
   ;
 
@@ -175,7 +176,8 @@ primary_base:
   ;
 
 block_elems:
-    expr SEMI block_elems                       { $1 :: $3 }
+   /* lambda */                                 { [] }
+  |  expr SEMI block_elems                      { $1 :: $3 }
   | expr SEMI                                   { [$1] }
   ;
 
