@@ -32,6 +32,13 @@ feeding them into OCamlyacc's parsing engine. On syntax errors, the parser repor
 then exits cleanly. Successfully parsed programs are serialized as `.cl-ast` files for later semantic analysis.
 
 ## Testing
-Testing for The Parser involved structural manipulation of a COOL program to verify that syntactically correct were parsed correctly and that invalid programs were rejected with explicitly error messages.
+Testing for the Parser focused on ensuring the grammar correctly recognized valid COOL program structures and rejected malformed 
+input with precise error reporting. The same suite of test cases used during the Lexer phase was extended for the Parser, allowing 
+a consistent evaluation across both components. These tests verified that syntactically correct programs were successfully transformed 
+into well-formed abstract syntax trees, while invalid programs produced clear, line-specific parser errors. Test scenarios included 
+variations in class definitions, feature lists, nested expressions, operator precedence, and block structures to confirm that all grammar 
+rules behaved as expected. Additional malformed inputs, such as missing semicolons, unmatched braces, or misplaced keywords, were 
+introduced to confirm accurate detection of syntax violations. Overall, testing demonstrated that the parser reliably bridges the lexer’s 
+token stream to the AST representation, maintaining conformity with the COOL grammar and producing output suitable for subsequent semantic analysis.
 
 ## References

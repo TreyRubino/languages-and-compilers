@@ -35,7 +35,18 @@ static, and self dispatch fully supported, with `SELF_TYPE` handled by resolving
 the system prints a location tagged runtime message and exits, ensuring deterministic and auditable behavior.
 
 ## Testing
-Functionality for object aliasing, SELF_TYPE dynamic resolution, and static and dynamic dispatching to showcase 
-the runtime, and managed heap is structurally and functionality verified. Delta debugging was used here in further edge case debugging since it (delta debugging) can over generalize on the test cases and cause some programs to become lexical, syntactically, or semantically invalid. In this phase we want well structured and typed programs that would create a runtime exception or is probably handling cases like object aliasing. A few other testing cases verify dispatch on void, heap management, no match case branch, and all built-ins handle their interactions according the the COOL Reference Manual.
+Testing for the Operational Semantics phase focused on verifying the correctness of runtime behavior and the faithful implementation 
+of COOL’s execution model. Unlike the Lexer and Parser, this phase required a distinct suite of test cases targeting dynamic evaluation 
+rather than syntactic or static correctness. The tests concentrated on runtime-specific constructs, including object creation, 
+inheritance-based attribute initialization, method dispatch (both static and dynamic), and evaluation of control structures such as 
+conditionals, loops, and case expressions. Special attention was given to SELF_TYPE handling, object aliasing, and correct propagation 
+of scope across nested blocks and method calls.
+
+Additional test cases were designed to trigger well-defined runtime errors—such as dispatch on void, division by zero, unbound identifiers, 
+and unmatched case branches—to ensure precise and consistent error reporting. Delta debugging was selectively applied to isolate complex 
+interactions between heap management and dispatch resolution, particularly in programs with deeply nested inheritance or aliasing behavior. 
+All tests operated on well-typed COOL programs to ensure that observed failures reflected true semantic violations rather than earlier lexical 
+or syntactic errors. The successful execution of these tests confirmed that the interpreter faithfully models COOL’s operational semantics and
+provides deterministic, auditable runtime behavior aligned with the language specification.
 
 ## References

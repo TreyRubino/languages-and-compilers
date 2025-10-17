@@ -31,8 +31,16 @@ tokens with line numbers, and writes them to a `-lex` output file for later cons
 with line numbers to aid debugging and to satisfy the specifications provided.
 
 ## Testing
-Testing and test cases for The Lexer were straightforward and testing the lexical structure of a COOL program. 
-Scope of testing was token matching, EOF, white space, null characters, string length, comments (single and multiple depth) and correct line number tracking.
+Testing for the Lexer focused on validating both correctness and robustness in token recognition, error handling, and line number tracking. 
+A comprehensive suite of test files was developed under the `tests/` directory to cover valid and invalid COOL programs. Valid test cases ensured 
+the lexer correctly recognized all keywords, operators, delimiters, and identifiers while accurately distinguishing between lowercase identifiers 
+and uppercase types. These cases also verified proper whitespace normalization, correct handling of string and integer literals within bounds, 
+and successful recognition and termination of nested block comments.
+
+Invalid test cases were used to verify error detection and diagnostic accuracy. These included unterminated or improperly nested comments, 
+unclosed string constants, string literals exceeding the 1024-character limit, and illegal or unknown characters. Each failure scenario was 
+checked for the correct error message and corresponding line number to ensure consistency with the COOL reference behavior. Overall, the lexer 
+successfully produced serialized token streams for syntactically correct input and precise, specification-compliant error reporting for malformed input.
 
 ## References
 [1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
