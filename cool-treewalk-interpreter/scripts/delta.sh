@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # @author Trey Rubino
 
 ROOT_DIR="$(dirname "$0")/.."

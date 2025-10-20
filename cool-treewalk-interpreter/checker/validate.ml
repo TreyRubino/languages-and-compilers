@@ -188,14 +188,14 @@ let names_scoping_validation (ast : cool_program) =
 let main_validation (ast : Ast.cool_program) =
   match List.find_opt (fun ((_, cname), _, _) -> cname = "Main") ast with
   | None ->
-      Printf.printf "ERROR: 0: Type-Check: Class Main is missing\n"; exit 1
+    Printf.printf "ERROR: 0: Type-Check: Class Main is missing\n"; exit 1
   | Some (_id, _inh, features) ->
-      let has_paramless_main =
-        List.exists (function
-          | Ast.Method ((_mloc, mname), formals, _ret, _body) -> mname = "main" && formals = []
-          | _ -> false) features
-      in
-      if not has_paramless_main then (
-        Printf.printf "ERROR: 0: Type-Check: Method main() is missing in class Main or has parameters\n";
-        exit 1
-      )
+    let has_paramless_main =
+      List.exists (function
+        | Ast.Method ((_mloc, mname), formals, _ret, _body) -> mname = "main" && formals = []
+        | _ -> false) features
+    in
+    if not has_paramless_main then (
+      Printf.printf "ERROR: 0: Type-Check: Method main() is missing in class Main or has parameters\n";
+      exit 1
+    )

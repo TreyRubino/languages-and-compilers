@@ -250,7 +250,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
     in
     (* 
     bug found during hair scary evaluation
-    endless recursion on acyclic object creation
+    endless recursion on object creation
     to solve this, we keep track of objects in construction,
     and instead of starting construction over again, 
     grab the incomplete instance, and continue construction 

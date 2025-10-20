@@ -29,18 +29,18 @@ let add_method ~(cls:string) ~(name:string) ~(formals:string list) ~(ret:string)
 
 let seed_builtins () =
 	(* Object *)
-	add_method ~cls:"Object"  ~name:"abort"      ~formals:[]             ~ret:"Object";
-	add_method ~cls:"Object"  ~name:"type_name"  ~formals:[]             ~ret:"String";
-	add_method ~cls:"Object"  ~name:"copy"       ~formals:[]             ~ret:"SELF_TYPE";
+	add_method ~cls:"Object"  ~name:"abort"      ~formals:[]              ~ret:"Object";
+	add_method ~cls:"Object"  ~name:"type_name"  ~formals:[]              ~ret:"String";
+	add_method ~cls:"Object"  ~name:"copy"       ~formals:[]              ~ret:"SELF_TYPE";
 	(* IO *)
-	add_method ~cls:"IO"      ~name:"out_string" ~formals:["String"]     ~ret:"SELF_TYPE";
-	add_method ~cls:"IO"      ~name:"out_int"    ~formals:["Int"]        ~ret:"SELF_TYPE";
-	add_method ~cls:"IO"      ~name:"in_string"  ~formals:[]             ~ret:"String";
-	add_method ~cls:"IO"      ~name:"in_int"     ~formals:[]             ~ret:"Int";
+	add_method ~cls:"IO"      ~name:"out_string" ~formals:["String"]      ~ret:"SELF_TYPE";
+	add_method ~cls:"IO"      ~name:"out_int"    ~formals:["Int"]         ~ret:"SELF_TYPE";
+	add_method ~cls:"IO"      ~name:"in_string"  ~formals:[]              ~ret:"String";
+	add_method ~cls:"IO"      ~name:"in_int"     ~formals:[]              ~ret:"Int";
 	(* String *)
-	add_method ~cls:"String"  ~name:"length"     ~formals:[]             ~ret:"Int";
-	add_method ~cls:"String"  ~name:"concat"     ~formals:["String"]     ~ret:"String";
-	add_method ~cls:"String"  ~name:"substr"     ~formals:["Int";"Int"]  ~ret:"String"
+	add_method ~cls:"String"  ~name:"length"     ~formals:[]              ~ret:"Int";
+	add_method ~cls:"String"  ~name:"concat"     ~formals:["String"]      ~ret:"String";
+	add_method ~cls:"String"  ~name:"substr"     ~formals:["Int"; "Int"]  ~ret:"String"
 
 let seed_user_methods (ast : cool_program) =
 	List.iter (fun ((_, cname), _inherits, features) ->

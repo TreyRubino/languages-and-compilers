@@ -59,7 +59,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 				let declared = Hashtbl.find o vname in
 				let et = type_check current_class o e in
 				if is_subtype et declared then et
-				else raise TYPE_ERROR
+				else (Printf.printf "ERROR: %s: Type-Check: Unexpected type for %s\n" vloc vname; exit 1)
 			else (Printf.printf "ERROR: %s: Type-Check: Undeclared variable %s\n" vloc vname; exit 1)
 
 		| Plus (x, y)   -> check [x; y] "Int"
@@ -248,7 +248,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 let type_check_class (cname : string) ((_id, _), _inherits, features) =
   List.iter (fun feat ->
     match feat with
-    | Attribute ((_aloc, aname), (_tl, tname), init_opt) ->
+    | Attribute ((aloc, aname), (_tl, tname), init_opt) ->
         (match init_opt with
           | None -> ()
           | Some e ->
@@ -264,7 +264,7 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
               (* type-check init and enforce conformance to declared type *)
               let it = type_check cname o e in
               let declared = if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname in
-              if not (is_subtype it declared) then raise TYPE_ERROR)
+              if not (is_subtype it declared) then (Printf.printf "ERROR: %s: Type-Check: Init type does not conform to declared type for variable %s\n" aloc aname; exit 1))
 
     | Method ((mloc, _mname), formals, (rtloc, rtype), body) ->
         let o = empty_object_env () in
