@@ -32,32 +32,32 @@ IFS=$'\n' sorted_names=($(printf '%s\n' "${names[@]}" | sort))
 unset IFS
 
 for name in "${sorted_names[@]}"; do    echo "$name" 
-    echo "Delta File Group: $name" >> "$REPORT"
-    echo "-------------------------------------------------------------------" >> "$REPORT"
+  echo "Delta File Group: $name" >> "$REPORT"
+  echo "-------------------------------------------------------------------" >> "$REPORT"
 
-    for ext in cl-lex cl-ast cl-type; do
-        test_file="$TEST_DIR/$name.$ext"
-        ref_file="$REF_DIR/$name.$ext"
-            echo "$name" 
+  for ext in cl-lex cl-ast cl-type; do
+    test_file="$TEST_DIR/$name.$ext"
+    ref_file="$REF_DIR/$name.$ext"
+      echo "$name" 
 
-        if [[ ! -f "$test_file" ]]; then
-            echo "Missing generated: $test_file" >> "$REPORT"
-            continue
-        fi
-        if [[ ! -f "$ref_file" ]]; then
-            echo "Missing reference: $ref_file" >> "$REPORT"
-            continue
-        fi
+    if [[ ! -f "$test_file" ]]; then
+      echo "Missing generated: $test_file" >> "$REPORT"
+      continue
+    fi
+    if [[ ! -f "$ref_file" ]]; then
+      echo "Missing reference: $ref_file" >> "$REPORT"
+      continue
+    fi
 
-        diff_out=$(diff -u "$ref_file" "$test_file")
-        if [[ -z "$diff_out" ]]; then
-            echo " $ext — Match" >> "$REPORT"
-        else
-            echo " =$ext — Differences found:" >> "$REPORT"
-            echo "$diff_out" >> "$REPORT"
-        fi
-        echo "" >> "$REPORT"
-    done
+    diff_out=$(diff -u "$ref_file" "$test_file")
+    if [[ -z "$diff_out" ]]; then
+      echo " $ext — Match" >> "$REPORT"
+    else
+      echo " =$ext — Differences found:" >> "$REPORT"
+      echo "$diff_out" >> "$REPORT"
+    fi
+    echo "" >> "$REPORT"
+  done
 
-    echo "===================================================================" >> "$REPORT"
+  echo "===================================================================" >> "$REPORT"
 done

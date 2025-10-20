@@ -2,8 +2,6 @@
 
 open Ast
 
-exception TYPE_ERROR
-
 let parent_map : (string, string) Hashtbl.t = Hashtbl.create 255
 
 type method_sig = {
