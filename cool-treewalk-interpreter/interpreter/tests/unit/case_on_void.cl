@@ -12,9 +12,9 @@ class Main inherits IO {
   a : A <- new A;
   main() : Object {
     case a.getVar() of
-        a : A => out_string("Class type is A\n");
-        i : Int => out_string("Class type is Int\n");
-        o : Object => out_string("Class type is Object\n");
+      a : A => out_string("Class type is A\n");
+      i : Int => out_string("Class type is Int\n");
+      o : Object => out_string("Class type is Object\n");
     esac
   };
 };

@@ -334,17 +334,14 @@ begin
       program token lexbuf
     with
     | _ ->
-      let err_line, near =
+      let near =
         match !last_token with
-        | Some (l_prev, t_prev) ->
-          (l_prev, lexeme_of_token t_prev)
+        | Some (_, t) -> lexeme_of_token t
         | None ->
-          if Queue.is_empty queue then (!last_line_number, "EOF")
-          else
-            let (l_next, t_next) = Queue.peek queue in
-            (l_next, lexeme_of_token t_next)
+            if Queue.is_empty queue then "EOF"
+            else let _, t = Queue.peek queue in lexeme_of_token t
       in
-      Printf.printf "ERROR: %s: Parser: syntax error near %s\n" err_line near;
+      Printf.printf "ERROR: %s: Parser: syntax error near %s\n" !last_line_number near;
       exit 1
   in
   

@@ -11,11 +11,11 @@ let dups_base_validation ~base_classes (ast : cool_program) =
   let seen = Hashtbl.create 255 in
   List.iter (fun ((cloc, cname), _inherits, _features) ->
     if List.mem cname base_classes then (
-      Printf.printf "ERROR: %s: Type-Check: Redefining base class %s\n" cloc cname; 
+      Printf.printf "ERROR: %s: Type-Check: redefining base class %s\n" cloc cname; 
       exit 1
     );
     if Hashtbl.mem seen cname then (
-      Printf.printf "ERROR: %s: Type-Check: Duplicate class %s\n" cloc cname; 
+      Printf.printf "ERROR: %s: Type-Check: duplicate class %s\n" cloc cname; 
       exit 1
     );
     Hashtbl.add seen cname true
@@ -30,15 +30,15 @@ let parent_validation ~all_classes (ast : cool_program) =
     | None -> ()
     | Some (iloc, iname) ->
         if iname = cname then (
-          Printf.printf "ERROR: %s: Type-Check: Class cannot inherit from itself (%s)\n" iloc cname; 
+          Printf.printf "ERROR: %s: Type-Check: class cannot inherit from itself (%s)\n" iloc cname; 
           exit 1
         );
         if List.mem iname forbidden then (
-          Printf.printf "ERROR: %s: Type-Check: Inheriting from forbidden class %s\n" iloc iname; 
+          Printf.printf "ERROR: %s: Type-Check: inheriting from forbidden class %s\n" iloc iname; 
           exit 1
         );
         if not (List.mem iname all_classes) then (
-          Printf.printf "ERROR: %s: Type-Check: Inheriting from undefined class %s\n" iloc iname; 
+          Printf.printf "ERROR: %s: Type-Check: inheriting from undefined class %s\n" iloc iname; 
           exit 1
         )
   ) ast;
@@ -62,7 +62,7 @@ let parent_validation ~all_classes (ast : cool_program) =
   (* is there an inheritance cycle? *)
   List.iter (fun c ->
     if c <> "Object" && dfs c then (
-      Printf.printf "ERROR: 0: Type-Check: Inheritance cycle\n"; 
+      Printf.printf "ERROR: 0: Type-Check: inheritance cycle\n"; 
       exit 1
     )
   ) all_classes
@@ -77,12 +77,12 @@ let decl_types_validation ~all_classes (ast : cool_program) =
           exit 1
         );
         if not (type_exists tname) then (
-          Printf.printf "ERROR: %s: Type-Check: Unknown type %s\n" tloc tname;
+          Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tloc tname;
           exit 1
         );
       | Method ((_mloc, _mname), formals, (rtloc, rtype), _body) -> 
         if rtype <> "SELF_TYPE" && not (type_exists rtype) then (
-          Printf.printf "ERROR: %s: Type-Check: Unknown return type %s\n" rtloc rtype;
+          Printf.printf "ERROR: %s: Type-Check: unknown return type %s\n" rtloc rtype;
           exit 1 
         );  
         List.iter (fun ((_floc, _fname), (ftloc, ftname)) -> 
@@ -91,7 +91,7 @@ let decl_types_validation ~all_classes (ast : cool_program) =
             exit 1
           );
           if not (type_exists ftname) then (
-            Printf.printf "ERROR: %s: Type-Check: Unknown type %s\n" ftloc ftname;
+            Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" ftloc ftname;
             exit 1
           )
         ) formals
@@ -113,17 +113,17 @@ let override_validation (ast : cool_program) =
         | Some parent_sig -> 
           let child_formals = List.map (fun (_fid, (_tl, tn)) -> tn) formals in
           if List.length parent_sig.formals <> List.length child_formals then (
-            Printf.printf "ERROR: %s: Type-Check: Redefining method %s with different arity\n" mloc mname;
+            Printf.printf "ERROR: %s: Type-Check: redefining method %s with different arity\n" mloc mname;
             exit 1
           );
           List.iter2 (fun p c ->
             if p <> c then (
-              Printf.printf "ERROR: %s: Type-Check: Redefining method %s with different parameter types\n" mloc mname;
+              Printf.printf "ERROR: %s: Type-Check: redefining method %s with different parameter types\n" mloc mname;
               exit 1
             )
           ) parent_sig.formals child_formals;
           if parent_sig.ret <> rtype then (
-            Printf.printf "ERROR: %s: Type-Check: Redefining method %s with different return type\n" mloc mname;
+            Printf.printf "ERROR: %s: Type-Check: redefining method %s with different return type\n" mloc mname;
             exit 1
           ))
       | Attribute _ -> () 
@@ -188,7 +188,7 @@ let names_scoping_validation (ast : cool_program) =
 let main_validation (ast : Ast.cool_program) =
   match List.find_opt (fun ((_, cname), _, _) -> cname = "Main") ast with
   | None ->
-    Printf.printf "ERROR: 0: Type-Check: Class Main is missing\n"; exit 1
+    Printf.printf "ERROR: 0: Type-Check: class Main is missing\n"; exit 1
   | Some (_id, _inh, features) ->
     let has_paramless_main =
       List.exists (function
@@ -196,6 +196,6 @@ let main_validation (ast : Ast.cool_program) =
         | _ -> false) features
     in
     if not has_paramless_main then (
-      Printf.printf "ERROR: 0: Type-Check: Method main() is missing in class Main or has parameters\n";
+      Printf.printf "ERROR: 0: Type-Check: method main() is missing in class Main or has parameters\n";
       exit 1
     )

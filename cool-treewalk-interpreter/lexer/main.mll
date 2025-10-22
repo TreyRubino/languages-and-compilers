@@ -105,7 +105,7 @@ rule token = parse
   | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm                            { TYPE(lxm) }
   | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm                            { IDENTIFIER(lxm) }    
 
-  | '"' ([^ '"' '\\' '\n'] | '\\' ['\\' '"' 'b' 't' 'n' 'f'] )* '"' as lxm    { if String.length lxm > 1024 then ( raise MAX_LENGTH ) else STRING(String.sub lxm 1 (String.length lxm - 2)) }
+  | '"' ( [^ '"' '\\' '\n'] | '\\' _ )* '"' as lxm   { if String.length lxm > 1024 then ( raise MAX_LENGTH ) else STRING(String.sub lxm 1 (String.length lxm - 2)) }
 
   | _                                                                         { raise UNKNOWN }
   | eof 			                                                                { raise EOF }

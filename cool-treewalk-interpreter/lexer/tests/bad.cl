@@ -1,12 +1,9 @@
-(* this is the outer comment
+class Main inherits IO {
+  main() : Object {
+    {
+      out_string("hi");%%      
+      0;
+    }
 
-(* this is a nested comment
-
-
-and now we are back in the outer comment
-
-*)
-
-class Main {
-  main() : Object { };
+  };
 };

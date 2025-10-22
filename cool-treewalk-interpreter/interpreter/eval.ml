@@ -41,21 +41,23 @@ let index_of x lst =
   aux 0 lst
 
 let unescape (s : string) : string =
-  let buf = Buffer.create (String.length s) in
+  let len = String.length s in
+  let buf = Buffer.create len in
   let rec loop i =
-    if i >= String.length s then ()
+    if i >= len then ()
     else
       match s.[i] with
-      | '\\' when i + 1 < String.length s ->
+      | '\\' when i + 1 < len ->
         (match s.[i+1] with
-        | 'n'  -> Buffer.add_char buf '\n'; loop (i+2)
-        | 't'  -> Buffer.add_char buf '\t'; loop (i+2)
-        | 'b'  -> Buffer.add_char buf '\b'; loop (i+2)
-        | 'f'  -> Buffer.add_char buf '\012'; loop (i+2)
-        | '"'  -> Buffer.add_char buf '"'; loop (i+2)
-        | '\\' -> Buffer.add_char buf '\\'; loop (i+2)
-        | c    -> Buffer.add_char buf c; loop (i+2))
-      | c -> Buffer.add_char buf c; loop (i+1)
+        | 'n'  -> Buffer.add_char buf '\n'  ; loop (i+2)
+        | 't'  -> Buffer.add_char buf '\t'  ; loop (i+2)
+        | '"'  -> Buffer.add_char buf '"'   ; loop (i+2)
+        | c    ->
+          Buffer.add_char buf '\\';
+          Buffer.add_char buf c;
+          loop (i+2))
+      | c ->
+        Buffer.add_char buf c; loop (i+1)
   in
   loop 0;
   Buffer.contents buf
@@ -63,7 +65,7 @@ let unescape (s : string) : string =
 let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value list) : value = 
   match qname, args with
   | "Object.abort", _ ->
-    runtime_error loc "abort"
+    Printf.printf "abort\n"; exit 1;
   | "Object.type_name", _ -> 
     VString recv.cls
   | "Object.copy", _ -> 
@@ -223,7 +225,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
           List.exists ((=) ty) ancestry_list
         ) branches
       in
-      (* pick the branch with the smallest ancestry "distance"  *)
+      (* pick the branch with the smallest ancestry "distance" *)
       let chosen =
         match matching with
         | [] -> None
@@ -282,18 +284,18 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | "concat", [VString s2] -> VString (s ^ s2)
       | "substr", [VInt i; VInt l] ->
         if i < 0 || l < 0 || i + l > String.length s then
-          runtime_error e.loc "substring out of range"
+          runtime_error e.loc "String.substr out of range"
         else VString (String.sub s i l)
       | "type_name", _ -> VString (class_of_value recv_v)
       | "copy", _ -> recv_v
-      | "abort", _ -> runtime_error e.loc "abort"
+      | "abort", -> Printf.printf "abort\n"; exit 1
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | VInt _ | VBool _ ->
       let _ = List.map (eval env ~self ~scopes) args in
       (match mname with
       | "type_name" -> VString (class_of_value recv_v)
       | "copy" -> recv_v
-      | "abort" -> runtime_error e.loc "abort"
+      | "abort" -> Printf.printf "abort\n"; exit 1
       | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v)))
   | StaticDispatch (recv, (_, ty), (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
@@ -311,18 +313,18 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | "concat", [VString s2] -> VString (s ^ s2)
       | "substr", [VInt i; VInt l] ->
         if i < 0 || l < 0 || i + l > String.length s then
-          runtime_error e.loc "substring out of range"
+          runtime_error e.loc "String.substr out of range"
         else VString (String.sub s i l)
       | "type_name", _ -> VString (class_of_value recv_v)
       | "copy", _ -> recv_v
-      | "abort", _ -> runtime_error e.loc "abort"
+      | "abort", _ -> Printf.printf "abort\n"; exit 1
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | VInt _ | VBool _ ->
       let _ = List.map (eval env ~self ~scopes) args in
       (match mname with
       | "type_name" -> VString (class_of_value recv_v)
       | "copy" -> recv_v
-      | "abort" -> runtime_error e.loc "abort"
+      | "abort" -> Printf.printf "abort\n"; exit 1
       | _ -> runtime_error e.loc ("method not implemented for " ^ class_of_value recv_v)))
   | SelfDispatch ((_, mname), args) -> 
     let args_v = List.map (eval env ~self ~scopes) args in
