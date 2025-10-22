@@ -180,8 +180,8 @@ begin
         Printf.bprintf outbuf "%s" (serialize result lexbuf.lex_curr_p.pos_lnum)
       done
     with 
-    | UNKNOWN     -> Printf.printf "ERROR: %d: Lexer: Invalid character: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
-    | MAX_LENGTH  -> Printf.printf "ERROR: %d: Lexer: String constant is too long: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
+    | UNKNOWN     -> Printf.printf "ERROR: %d: Lexer: invalid character: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
+    | MAX_LENGTH  -> Printf.printf "ERROR: %d: Lexer: string constant is too long: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
     | NO_CLOSURE  -> Printf.printf "ERROR: %d: Lexer: EOF in comment\n"(lexbuf.lex_curr_p.pos_lnum + 1); exit 1
     | EOF         -> 
       begin

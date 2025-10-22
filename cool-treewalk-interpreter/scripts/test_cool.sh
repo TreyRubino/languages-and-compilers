@@ -22,10 +22,9 @@ CLEANUP_FILES=(
 build_stage() 
 {
     local stage_dir=$1
-    echo -n "" > "$ERR_FILE"
 
     if ! (cd "$stage_dir" && make clean > /dev/null 2>&1 && make > /dev/null 2>&1); then
-        echo "ERROR: build failed in $stage_dir. Check $ERR_FILE"
+        echo "ERROR: build failed in $stage_dir."
         exit 1
     fi
 }
@@ -38,8 +37,7 @@ run_stage()
     local name=$(basename "$binary")
     local Name="$(tr '[:lower:]' '[:upper:]' <<< "${name:0:1}")${name:1}"
 
-    if ! "./$binary" "$input" "$output" >> "$ERR_FILE" 2>&1; then
-        echo "ERROR: $Name: Check $ERR_FILE"
+    if ! "./$binary" "$input" "$output" 2>&1; then
         exit 1
     fi
 
@@ -61,7 +59,6 @@ usage()
 clean() 
 {
     cd "$ROOT_DIR" || exit 1
-    : > "$ERR_FILE"
     for f in "${CLEANUP_FILES[@]}"; do
         [[ -f "$f" ]] && rm -f "$f"
     done

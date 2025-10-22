@@ -66,7 +66,7 @@ type program = structure list
 %left DOT
 
 %type <program> program
-%type <expr> expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base atom
+%type <expr> expr assign_expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base atom
 %type <expr list> expr_list block_elems
 
 %start program
@@ -96,7 +96,9 @@ feature:
     IDENTIFIER COLON TYPE                       { AttributeNoInit($1, $3) }  
   | IDENTIFIER COLON TYPE LARROW expr           { AttributeInit($1, $3, $5) }
   | IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE expr RBRACE
-                                                { Method($1, $3, $6, $8) }  
+                                                { Method($1, $3, $6, $8) } 
+  | IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE RBRACE
+                                                { let (l,_) = $1 in Method($1, $3, $6, (l, Block [])) } 
   ;
 
 formal_list:
@@ -116,8 +118,11 @@ expr_list:
   ;
 
 expr:
-    /* empty */                                 { ("", Block []) }
-  |  IDENTIFIER LARROW expr                     { let (l,_) = $1 in (l, Assign($1, $3)) }
+  |  assign_expr                                { $1 }
+  ;
+
+assign_expr:
+    IDENTIFIER LARROW expr                      { let (l,_) = $1 in (l, Assign($1, $3)) }
   | cmp_expr                                    { $1 }
   ;
 
@@ -152,15 +157,15 @@ atom:
   | WHILE expr LOOP expr POOL                   { ($1, While($2, $4)) }
   | LET let_binding_list IN expr                { ($1, Let($2, $4)) }
   | CASE expr OF case_list ESAC                 { ($1, Case($2, $4)) }
-  | primary_expr { $1 }
+  | primary_expr                                { $1 }
   ; 
 
 primary_expr:
-    primary_base  { $1 }
+    primary_base                                { $1 }
   | primary_expr DOT IDENTIFIER LPAREN expr_list RPAREN
-      { let (line, _) = $1 in (line, DynamicDispatch($1, $3, $5)) }
+                                                { let (line, _) = $1 in (line, DynamicDispatch($1, $3, $5)) }
   | primary_expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN
-      { let (line, _) = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
+                                                { let (line, _) = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
   ;
 
 primary_base:
@@ -176,9 +181,8 @@ primary_base:
   ;
 
 block_elems:
-   /* lambda */                                 { [] }
-  |  expr SEMI block_elems                      { $1 :: $3 }
-  | expr SEMI                                   { [$1] }
+    expr SEMI                                   { [$1] }
+  | expr SEMI block_elems                       { $1 :: $3 }
   ;
 
 let_binding:
@@ -201,6 +205,51 @@ case_list:
   ;
 
 %%
+
+let lexeme_of_token = function
+  | IDENTIFIER (_, n) -> n
+  | TYPE       (_, n) -> n
+  | STRING     (_, s) -> "\"" ^ s ^ "\""
+  | INTEGER    (_, i) -> i
+  | PLUS _            -> "+"
+  | MINUS _           -> "-"
+  | TIMES _           -> "*"
+  | DIVIDE _          -> "/"
+  | EQUALS _          -> "="
+  | AT _              -> "@"
+  | LT _              -> "<"
+  | LE _              -> "<="
+  | SEMI _            -> ";"
+  | TILDE _           -> "~"
+  | DOT _             -> "."
+  | COMMA _           -> ","
+  | COLON _           -> ":"
+  | RBRACE _          -> "}"
+  | LBRACE _          -> "{"
+  | RPAREN _          -> ")"
+  | LPAREN _          -> "("
+  | LARROW _          -> "<-"
+  | RARROW _          -> "=>"
+  | TRUE _            -> "true"
+  | FALSE _           -> "false"
+  | NEW _             -> "new"
+  | NOT _             -> "not"
+  | LET _             -> "let"
+  | ELSE _            -> "else"
+  | CLASS _           -> "class"
+  | CASE _            -> "case"
+  | ESAC _            -> "esac"
+  | INHERITS _        -> "inherits"
+  | LOOP _            -> "loop"
+  | POOL _            -> "pool"
+  | ISVOID _          -> "isvoid"
+  | OF _              -> "of"
+  | IN _              -> "in"
+  | IF _              -> "if"
+  | FI _              -> "fi"
+  | WHILE _           -> "while"
+  | THEN _            -> "then"
+  | EOF               -> "EOF"
 
 let deserialize infile = 
   let in_channel = open_in infile in
@@ -254,7 +303,7 @@ let deserialize infile =
         | "string"      -> STRING(l, get_line ())
         | "identifier"  -> IDENTIFIER(l, get_line ())
         | "type"        -> TYPE(l, get_line ())
-        | _             -> printf "Unexpected token type: %s\n" token_type ; exit 1
+        | _             -> printf "ERROR: %s: Parser: invalid token %s\n" l token_type; exit 1
       in
       Queue.add (l, token) queue
     done
@@ -268,75 +317,35 @@ begin
   let queue = deserialize infile in
   let lexbuf = Lexing.from_string "" in 
   let last_line_number = ref "1" in
-  let token lb = 
-    if Queue.is_empty queue then
+  let last_token : (string * token) option ref = ref None in 
+  let token lb =
+    if Queue.is_empty queue then (
+      last_token := Some (!last_line_number, EOF);
       EOF
-    else 
+    ) else
       let line_number, next_token = Queue.take queue in
-      last_line_number := line_number ; 
+      last_line_number := line_number;
+      last_token := Some (line_number, next_token);
       next_token
-  in 
+  in
 
   let ast =
     try
       program token lexbuf
     with
-    | Parsing.Parse_error ->
-        let tok =
-          if Queue.is_empty queue then "<EOF>"
+    | _ ->
+      let err_line, near =
+        match !last_token with
+        | Some (l_prev, t_prev) ->
+          (l_prev, lexeme_of_token t_prev)
+        | None ->
+          if Queue.is_empty queue then (!last_line_number, "EOF")
           else
-            let _, t = Queue.peek queue in
-            match t with
-            | IDENTIFIER (_, n) -> "IDENTIFIER(" ^ n ^ ")"
-            | TYPE       (_, n) -> "TYPE(" ^ n ^ ")"
-            | STRING     (_, s) -> "STRING(" ^ s ^ ")"
-            | INTEGER    (_, i) -> "INTEGER(" ^ i ^ ")"
-            | PLUS _            -> "PLUS"
-            | MINUS _           -> "MINUS"
-            | TIMES _           -> "TIMES"
-            | DIVIDE _          -> "DIVIDE"
-            | EQUALS _          -> "EQUALS"
-            | AT _              -> "AT"
-            | LT _              -> "LT"
-            | LE _              -> "LE"
-            | SEMI _            -> "SEMI"
-            | TILDE _           -> "TILDE"
-            | DOT _             -> "DOT"
-            | COMMA _           -> "COMMA"
-            | COLON _           -> "COLON"
-            | RBRACE _          -> "RBRACE"
-            | LBRACE _          -> "LBRACE"
-            | RPAREN _          -> "RPAREN"
-            | LPAREN _          -> "LPAREN"
-            | LARROW _          -> "LARROW"
-            | RARROW _          -> "RARROW"
-            | TRUE _            -> "TRUE"
-            | FALSE _           -> "FALSE"
-            | NEW _             -> "NEW"
-            | NOT _             -> "NOT"
-            | LET _             -> "LET"
-            | ELSE _            -> "ELSE"
-            | CLASS _           -> "CLASS"
-            | CASE _            -> "CASE"
-            | ESAC _            -> "ESAC"
-            | INHERITS _        -> "INHERITS"
-            | LOOP _            -> "LOOP"
-            | POOL _            -> "POOL"
-            | ISVOID _          -> "ISVOID"
-            | OF _              -> "OF"
-            | IN _              -> "IN"
-            | IF _              -> "IF"
-            | FI _              -> "FI"
-            | WHILE _           -> "WHILE"
-            | THEN _            -> "THEN"
-            | EOF               -> "<EOF>"
-        in
-        Printf.printf "ERROR: %s: Parser: unexpected %s\n" !last_line_number tok;
-        exit 1
-    | e ->
-        Printf.printf "ERROR: %s: Parser: %s\n"
-          !last_line_number (Printexc.to_string e);
-        exit 1
+            let (l_next, t_next) = Queue.peek queue in
+            (l_next, lexeme_of_token t_next)
+      in
+      Printf.printf "ERROR: %s: Parser: syntax error near %s\n" err_line near;
+      exit 1
   in
   
   let outfile = (Filename.chop_extension Sys.argv.(1)) ^ ".cl-ast" in
@@ -349,37 +358,37 @@ begin
     List.iter serialize_class ast
   and serialize_class ast = 
     match ast with
-    | ClassNoInherits(class_name, class_features) -> 
-        serialize_identifier class_name ; 
-        fprintf f "no_inherits\n" ; 
-        fprintf f "%d\n" (List.length class_features) ; 
-        List.iter serialize_feature class_features
+    | ClassNoInherits(class_name, class_features) ->
+      serialize_identifier class_name ; 
+      fprintf f "no_inherits\n" ; 
+      fprintf f "%d\n" (List.length class_features) ; 
+      List.iter serialize_feature class_features
     | ClassInherits(class_name, parent_name, class_features) ->
-        serialize_identifier class_name ; 
-        fprintf f "inherits\n" ; 
-        serialize_identifier parent_name ;
-        fprintf f "%d\n" (List.length class_features) ; 
-        List.iter serialize_feature class_features
+      serialize_identifier class_name ; 
+      fprintf f "inherits\n" ; 
+      serialize_identifier parent_name ;
+      fprintf f "%d\n" (List.length class_features) ; 
+      List.iter serialize_feature class_features
   and serialize_identifier (line, lexeme) =
     fprintf f "%s\n%s\n" line lexeme
   and serialize_feature ast = 
     match ast with
     | AttributeNoInit(attr_name, attr_type) -> 
-        fprintf f "attribute_no_init\n" ; 
-        serialize_identifier attr_name ; 
-        serialize_identifier attr_type
+      fprintf f "attribute_no_init\n" ; 
+      serialize_identifier attr_name ; 
+      serialize_identifier attr_type
     | AttributeInit(attr_name, attr_type, init_expr) ->
-        fprintf f "attribute_init\n" ; 
-        serialize_identifier attr_name ; 
-        serialize_identifier attr_type ;
-        serialize_expr init_expr
+      fprintf f "attribute_init\n" ; 
+      serialize_identifier attr_name ; 
+      serialize_identifier attr_type ;
+      serialize_expr init_expr
     | Method(method_name, method_formals, method_type, method_body) ->
-        fprintf f "method\n" ;
-        serialize_identifier method_name ; 
-        fprintf f "%d\n" (List.length method_formals);  
-        List.iter serialize_formal method_formals ; 
-        serialize_identifier method_type ;
-        serialize_expr method_body
+      fprintf f "method\n" ;
+      serialize_identifier method_name ; 
+      fprintf f "%d\n" (List.length method_formals);  
+      List.iter serialize_formal method_formals ; 
+      serialize_identifier method_type ;
+      serialize_expr method_body
   and serialize_formal (formal_name, formal_type) = 
     serialize_identifier formal_name ;
     serialize_identifier formal_type
@@ -387,98 +396,98 @@ begin
     fprintf f "%s\n" line ; 
     match expr_internal with
     | Assign(lh_value, rh_value) ->
-        fprintf f "assign\n" ; 
-        serialize_identifier lh_value ;
-        serialize_expr rh_value
+      fprintf f "assign\n" ; 
+      serialize_identifier lh_value ;
+      serialize_expr rh_value
     | DynamicDispatch(e, method_name, args) -> 
-        fprintf f "dynamic_dispatch\n" ; 
-        serialize_expr e ; 
-        serialize_identifier method_name ;
-        fprintf f "%d\n" (List.length args) ; 
-        List.iter serialize_expr args
+      fprintf f "dynamic_dispatch\n" ; 
+      serialize_expr e ; 
+      serialize_identifier method_name ;
+      fprintf f "%d\n" (List.length args) ; 
+      List.iter serialize_expr args
     | StaticDispatch(e, type_name, method_name, args) -> 
-        fprintf f "static_dispatch\n" ;
-        serialize_expr e ; 
-        serialize_identifier type_name ;  
-        serialize_identifier method_name ;
-        fprintf f "%d\n" (List.length args) ; 
-        List.iter serialize_expr args
+      fprintf f "static_dispatch\n" ;
+      serialize_expr e ; 
+      serialize_identifier type_name ;  
+      serialize_identifier method_name ;
+      fprintf f "%d\n" (List.length args) ; 
+      List.iter serialize_expr args
     | SelfDispatch(method_name, args) -> 
-        fprintf f "self_dispatch\n" ; 
-        serialize_identifier method_name ; 
-        fprintf f "%d\n" (List.length args) ; 
-        List.iter serialize_expr args
+      fprintf f "self_dispatch\n" ; 
+      serialize_identifier method_name ; 
+      fprintf f "%d\n" (List.length args) ; 
+      List.iter serialize_expr args
     | If(p, t, e2) -> 
-        fprintf f "if\n" ; 
-        serialize_expr p ; 
-        serialize_expr t ;
-        serialize_expr e2
+      fprintf f "if\n" ; 
+      serialize_expr p ; 
+      serialize_expr t ;
+      serialize_expr e2
     | While(p, b) -> 
-        fprintf f "while\n" ; 
-        serialize_expr p ; 
-        serialize_expr b 
+      fprintf f "while\n" ; 
+      serialize_expr p ; 
+      serialize_expr b 
     | Let(bindings, body_expr) ->
-        fprintf f "let\n" ;
-        fprintf f "%d\n" (List.length bindings) ;
-        List.iter (function
-          | LetBindingNoInit (v, ty) ->
-              fprintf f "let_binding_no_init\n" ;
-              serialize_identifier v ;
-              serialize_identifier ty
-          | LetBindingInit (v, ty, init_e) ->
-              fprintf f "let_binding_init\n" ;
-              serialize_identifier v ;
-              serialize_identifier ty ;
-              serialize_expr init_e
-        ) bindings ;
+      fprintf f "let\n" ;
+      fprintf f "%d\n" (List.length bindings) ;
+      List.iter (function
+        | LetBindingNoInit (v, ty) ->
+          fprintf f "let_binding_no_init\n" ;
+          serialize_identifier v ;
+          serialize_identifier ty
+        | LetBindingInit (v, ty, init_e) ->
+          fprintf f "let_binding_init\n" ;
+          serialize_identifier v ;
+          serialize_identifier ty ;
+          serialize_expr init_e
+      ) bindings ;
         serialize_expr body_expr
     | Case(scrutinee, branches) -> 
-        fprintf f "case\n" ; 
-        serialize_expr scrutinee ; 
-        fprintf f "%d\n" (List.length branches) ; 
-        List.iter (fun (id1, id2, e) -> 
-          serialize_identifier id1 ; 
-          serialize_identifier id2 ; 
-          serialize_expr e
-        ) branches
+      fprintf f "case\n" ; 
+      serialize_expr scrutinee ; 
+      fprintf f "%d\n" (List.length branches) ; 
+      List.iter (fun (id1, id2, e) -> 
+        serialize_identifier id1 ; 
+        serialize_identifier id2 ; 
+        serialize_expr e
+      ) branches
     | New(obj_type) ->
-        fprintf f "new\n" ; 
-        serialize_identifier obj_type
+      fprintf f "new\n" ; 
+      serialize_identifier obj_type
     | Isvoid(e1) -> 
-        fprintf f "isvoid\n" ; 
-        serialize_expr e1
+      fprintf f "isvoid\n" ; 
+      serialize_expr e1
     | Plus(x, y) ->
-        fprintf f "plus\n" ;  serialize_expr x ; serialize_expr y
+      fprintf f "plus\n" ;  serialize_expr x ; serialize_expr y
     | Minus(x, y) ->
-        fprintf f "minus\n" ; serialize_expr x ; serialize_expr y
+      fprintf f "minus\n" ; serialize_expr x ; serialize_expr y
     | Times(x, y) -> 
-        fprintf f "times\n" ; serialize_expr x ; serialize_expr y
+      fprintf f "times\n" ; serialize_expr x ; serialize_expr y
     | Divide(x, y) -> 
-        fprintf f "divide\n" ; serialize_expr x ; serialize_expr y
+      fprintf f "divide\n" ; serialize_expr x ; serialize_expr y
     | Tilde(e1) -> 
-        fprintf f "negate\n" ; serialize_expr e1
+      fprintf f "negate\n" ; serialize_expr e1
     | Lt(x, y) ->
-        fprintf f "lt\n" ; serialize_expr x ; serialize_expr y
+      fprintf f "lt\n" ; serialize_expr x ; serialize_expr y
     | Le(x, y) ->
-        fprintf f "le\n" ; serialize_expr x ; serialize_expr y
+      fprintf f "le\n" ; serialize_expr x ; serialize_expr y
     | Equals(x, y) ->
-        fprintf f "eq\n" ; serialize_expr x ; serialize_expr y
+      fprintf f "eq\n" ; serialize_expr x ; serialize_expr y
     | Not(e1) -> 
-        fprintf f "not\n" ; serialize_expr e1
+      fprintf f "not\n" ; serialize_expr e1
     | Identifier id -> 
-        fprintf f "identifier\n"; serialize_identifier id
+      fprintf f "identifier\n"; serialize_identifier id
     | Integer i ->
-        fprintf f "integer\n%s\n" i
+      fprintf f "integer\n%s\n" i
     | String s -> 
-        fprintf f "string\n%s\n" s
+      fprintf f "string\n%s\n" s
     | True -> 
-        fprintf f "true\n" 
+      fprintf f "true\n" 
     | False -> 
-        fprintf f "false\n" 
+      fprintf f "false\n" 
     | Block es ->
-        fprintf f "block\n";
-        fprintf f "%d\n" (List.length es);
-        List.iter serialize_expr es
+      fprintf f "block\n";
+      fprintf f "%d\n" (List.length es);
+      List.iter serialize_expr es
   in  
 
   serialize f ast; 

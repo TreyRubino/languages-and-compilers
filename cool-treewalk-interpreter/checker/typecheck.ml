@@ -145,7 +145,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
       let acc : static_type option ref = ref None in
 
       List.iter (fun ((vloc, vname), (tl, tname), br) ->
-        (* cannot bind 'self' *)
+        (* cannot bind self *)
         if vname = "self" then (
           Printf.printf "ERROR: %s: Type-Check: cannot bind 'self' in case branch\n" vloc; exit 1
         );
@@ -277,21 +277,21 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
     match feat with
     | Attribute ((aloc, aname), (_tl, tname), init_opt) ->
       (match init_opt with
-        | None -> ()
-        | Some e ->
-          let o = empty_object_env () in
-          Hashtbl.add o "self" (SELF_TYPE cname);
+      | None -> ()
+      | Some e ->
+        let o = empty_object_env () in
+        Hashtbl.add o "self" (SELF_TYPE cname);
 
-          let attrs = collect_attributes cname in
-          Hashtbl.iter (fun an tyname ->
-            if an <> "self" then
-              Hashtbl.replace o an (if tyname = "SELF_TYPE" then SELF_TYPE cname else Class tyname)
-          ) attrs;
+        let attrs = collect_attributes cname in
+        Hashtbl.iter (fun an tyname ->
+          if an <> "self" then
+            Hashtbl.replace o an (if tyname = "SELF_TYPE" then SELF_TYPE cname else Class tyname)
+        ) attrs;
 
-          (* type-check init and enforce conformance to declared type *)
-          let it = type_check cname o e in
-          let declared = if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname in
-          if not (is_subtype it declared) then (Printf.printf "ERROR: %s: Type-Check: init type does not conform to declared type for variable %s\n" aloc aname; exit 1))
+        (* type-check init and enforce conformance to declared type *)
+        let it = type_check cname o e in
+        let declared = if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname in
+        if not (is_subtype it declared) then (Printf.printf "ERROR: %s: Type-Check: init type does not conform to declared type for variable %s\n" aloc aname; exit 1))
 
     | Method ((mloc, _mname), formals, (rtloc, rtype), body) ->
       let o = empty_object_env () in
