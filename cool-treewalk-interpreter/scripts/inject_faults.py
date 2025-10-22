@@ -12,7 +12,7 @@ for i in range(len(lines)):
   if line in [ 'type', 'identifier' ]:
     positions = [i + 1] + positions
 
-for j in range(2):
+for j in range(100):
   pos1 = random.choice(positions)
   pos2 = random.choice(positions)
   val1 = lines[pos1]

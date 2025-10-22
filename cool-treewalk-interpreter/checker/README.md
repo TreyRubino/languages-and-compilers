@@ -70,4 +70,4 @@ the semantic analyzer was validated independently, with precise coverage of all 
 [Online]. Available: https://www.youtube.com/watch?v=Oxpgrkmsxhg
 
 [3] A. V. Aho, M. S. Lam, R. Sethi, and J. D. Ullman, Compilers: Principles, Techniques, 
-and Tools, 2nd ed., ch. 6, “Semantics, Code Generation, and Optimization,” Pearson/Addison-Wesley, 2006.
+and Tools, 2nd ed., ch. 6, “Intermediate-Code Generation,” Pearson/Addison-Wesley, 2006.

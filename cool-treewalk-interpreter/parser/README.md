@@ -35,10 +35,12 @@ then exits cleanly. Successfully parsed programs are serialized as `.cl-ast` fil
 Testing for the Parser focused on ensuring the grammar correctly recognized valid COOL program structures and rejected malformed 
 input with precise error reporting. The same suite of test cases used during the Lexer phase was extended for the Parser, allowing 
 a consistent evaluation across both components. These tests verified that syntactically correct programs were successfully transformed 
-into well-formed abstract syntax trees, while invalid programs produced clear, line-specific parser errors. Test scenarios included 
+into well formed abstract syntax trees, while invalid programs produced clear, line specific parser errors. Test scenarios included 
 variations in class definitions, feature lists, nested expressions, operator precedence, and block structures to confirm that all grammar 
 rules behaved as expected. Additional malformed inputs, such as missing semicolons, unmatched braces, or misplaced keywords, were 
 introduced to confirm accurate detection of syntax violations. Overall, testing demonstrated that the parser reliably bridges the lexer’s 
 token stream to the AST representation, maintaining conformity with the COOL grammar and producing output suitable for subsequent semantic analysis.
 
 ## References
+
+[4] A. V. Aho, J. D. Ullman, R. Sethi, and M. S. Lam, Compilers: Principles, Techniques, and Tools, 2nd ed., ch. 3, “Syntax Analysis,” Pearson/Addison-Wesley, 2006.

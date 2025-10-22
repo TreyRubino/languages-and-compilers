@@ -288,7 +288,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
         else VString (String.sub s i l)
       | "type_name", _ -> VString (class_of_value recv_v)
       | "copy", _ -> recv_v
-      | "abort", -> Printf.printf "abort\n"; exit 1
+      | "abort", _ -> Printf.printf "abort\n"; exit 1
       | _ -> runtime_error e.loc ("string method not implemented: " ^ mname))
     | VInt _ | VBool _ ->
       let _ = List.map (eval env ~self ~scopes) args in

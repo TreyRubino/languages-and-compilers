@@ -14,12 +14,10 @@ all: $(BUILD) $(EXECUTABLE)
 $(BUILD):
 	@mkdir -p $(BUILD)
 
-# compile .ml -> build/*.cmo and move .cmi next to it
 $(BUILD)/%.cmo: %.ml | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c $< -o $@
 	@if [ -f $*.cmi ]; then mv -f $*.cmi $(BUILD)/; fi
 
-# link bytecode
 $(EXECUTABLE): $(CMO)
 	$(OCAMLC) -I $(BUILD) -o $@ $(CMO)
 

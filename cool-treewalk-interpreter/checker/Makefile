@@ -16,7 +16,6 @@ all: $(BUILD) $(EXECUTABLE)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-# Compile each .ml to build/*.cmo and move its .cmi into build/ as well
 $(BUILD)/%.cmo: %.ml | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $@ $<
 	@([ -f $*.cmi ] && mv -f $*.cmi $(BUILD)/) || true
