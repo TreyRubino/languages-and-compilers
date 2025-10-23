@@ -1,5 +1,7 @@
 class A inherits String {};
 
 class Main inherits IO {
-  main() : Object {};
+  main() : Object { 
+    0
+  };
 };

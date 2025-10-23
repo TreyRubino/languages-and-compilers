@@ -69,5 +69,5 @@ the semantic analyzer was validated independently, with precise coverage of all 
 [5] “Video Guide - PA4” YouTube, uploaded by westleyweimer6512, 
 [Online]. Available: https://www.youtube.com/watch?v=Oxpgrkmsxhg
 
-[3] A. V. Aho, M. S. Lam, R. Sethi, and J. D. Ullman, Compilers: Principles, Techniques, 
+[6] A. V. Aho, M. S. Lam, R. Sethi, and J. D. Ullman, Compilers: Principles, Techniques, 
 and Tools, 2nd ed., ch. 6, “Intermediate-Code Generation,” Pearson/Addison-Wesley, 2006.

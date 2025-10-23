@@ -1,4 +1,6 @@
 class Main inherits IO {
   f() : Int { "This is wrong." };
-  main() : Object {};
+  main() : Object {
+    0
+  };
 };  

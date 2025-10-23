@@ -1,3 +1,9 @@
+(* 
+ASI Implementation was taken from the provided cool-examples folder to be used
+as a utility for the stack implementation. I (Trey Rubino) did not write the A2I
+implementation, my COOL source code starts at class Stack.
+*)
+
 (*
   The class A2I provides integer-to-string and string-to-integer
   conversion routines.  To use these routines, either inherit them

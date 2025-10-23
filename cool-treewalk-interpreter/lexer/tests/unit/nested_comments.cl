@@ -8,5 +8,7 @@ and now we are back in the outer comment
 *)
 
 class Main {
-  main() : Object { };
+  main() : Object { 
+    0
+  };
 };

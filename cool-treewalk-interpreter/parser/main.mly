@@ -78,7 +78,7 @@ program:
   ;
 
 class_list:
-    /* lambda */                                { [] }
+    structure SEMI                              { [$1] }
   | structure SEMI class_list                   { $1 :: $3 }
   ;
 
@@ -96,9 +96,7 @@ feature:
     IDENTIFIER COLON TYPE                       { AttributeNoInit($1, $3) }  
   | IDENTIFIER COLON TYPE LARROW expr           { AttributeInit($1, $3, $5) }
   | IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE expr RBRACE
-                                                { Method($1, $3, $6, $8) } 
-  | IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE RBRACE
-                                                { let (l,_) = $1 in Method($1, $3, $6, (l, Block [])) } 
+                                                { Method($1, $3, $6, $8) }  
   ;
 
 formal_list:

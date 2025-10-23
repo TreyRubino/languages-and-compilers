@@ -2,5 +2,7 @@ class A {};
 class A {};
 
 class Main {
-  main() : Object {};
+  main() : Object {
+    0
+  };
 };  

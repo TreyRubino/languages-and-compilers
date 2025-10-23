@@ -271,7 +271,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
   | DynamicDispatch (recv, (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
     (match recv_v with
-    | VVoid -> runtime_error e.loc "dynamic dispatch on void"
+    | VVoid -> runtime_error e.loc "dispatch on void"
     | VObj o -> 
       let args_v = List.map (eval env ~self ~scopes) args in
       (match lookup_method env o.cls mname with
@@ -284,7 +284,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | "concat", [VString s2] -> VString (s ^ s2)
       | "substr", [VInt i; VInt l] ->
         if i < 0 || l < 0 || i + l > String.length s then
-          runtime_error e.loc "String.substr out of range"
+          runtime_error "0" "String.substr out of range"
         else VString (String.sub s i l)
       | "type_name", _ -> VString (class_of_value recv_v)
       | "copy", _ -> recv_v
@@ -300,7 +300,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
   | StaticDispatch (recv, (_, ty), (_, mname), args) -> 
     let recv_v = eval env ~self ~scopes recv in
     (match recv_v with
-    | VVoid -> runtime_error e.loc "static dispatch on void"
+    | VVoid -> runtime_error e.loc "dispatch on void"
     | VObj o -> 
       let args_v = List.map (eval env ~self ~scopes) args in
       (match lookup_method env ty mname with
@@ -313,7 +313,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
       | "concat", [VString s2] -> VString (s ^ s2)
       | "substr", [VInt i; VInt l] ->
         if i < 0 || l < 0 || i + l > String.length s then
-          runtime_error e.loc "String.substr out of range"
+          runtime_error "0" "String.substr out of range"
         else VString (String.sub s i l)
       | "type_name", _ -> VString (class_of_value recv_v)
       | "copy", _ -> recv_v

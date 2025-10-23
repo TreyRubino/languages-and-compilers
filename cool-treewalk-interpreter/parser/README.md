@@ -42,5 +42,10 @@ introduced to confirm accurate detection of syntax violations. Overall, testing 
 token stream to the AST representation, maintaining conformity with the COOL grammar and producing output suitable for subsequent semantic analysis.
 
 ## References
+[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
+[Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf
 
-[4] A. V. Aho, J. D. Ullman, R. Sethi, and M. S. Lam, Compilers: Principles, Techniques, and Tools, 2nd ed., ch. 3, “Syntax Analysis,” Pearson/Addison-Wesley, 2006.
+[2] “Video Guide - PA3 Parser - OCaml” YouTube, uploaded by westleyweimer6512, 
+[Online]. Available: https://www.youtube.com/watch?v=3xCJMyawoxg
+
+[3] A. V. Aho, J. D. Ullman, R. Sethi, and M. S. Lam, Compilers: Principles, Techniques, and Tools, 2nd ed., ch. 4, “Syntax Analysis,” Pearson/Addison-Wesley, 2006.

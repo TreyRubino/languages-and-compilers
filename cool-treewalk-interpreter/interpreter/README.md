@@ -50,5 +50,17 @@ or syntactic errors. The successful execution of these tests confirmed that the 
 provides deterministic, auditable runtime behavior aligned with the language specification.
 
 ## References
+[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
+[Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf
+
+[2] “Video Guide - PA5” YouTube, uploaded by westleyweimer6512, 
+[Online]. Available: https://www.youtube.com/watch?v=eQRRlZoVxSc
+
+[3] “Video Guide - PA5c” YouTube, uploaded by westleyweimer6512, 
+[Online]. Available: https://www.youtube.com/watch?v=i-nBIxE5Xcs
+
+[4] “Video Guide - PA5t” YouTube, uploaded by westleyweimer6512, 
+[Online]. Available: https://www.youtube.com/watch?v=dWpJQ0lrJhs
+
 
 

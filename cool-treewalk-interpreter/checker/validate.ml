@@ -34,7 +34,7 @@ let parent_validation ~all_classes (ast : cool_program) =
           exit 1
         );
         if List.mem iname forbidden then (
-          Printf.printf "ERROR: %s: Type-Check: inheriting from forbidden class %s\n" iloc iname; 
+          Printf.printf "ERROR: %s: Type-Check: class %s inherits from %s\n" iloc cname iname; 
           exit 1
         );
         if not (List.mem iname all_classes) then (
@@ -72,11 +72,7 @@ let decl_types_validation ~all_classes (ast : cool_program) =
   List.iter (fun ((_cloc, _cname), _inherits, features) ->
     List.iter (function
       | Attribute ((_aloc, _name), (tloc, tname), _init) ->
-        if tname = "SELF_TYPE" then (
-          Printf.printf "ERROR: %s: Type-Check: SELF_TYPE not allowed as attribute type\n" tloc;
-          exit 1
-        );
-        if not (type_exists tname) then (
+        if tname <> "SELF_TYPE" && not (type_exists tname) then (
           Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tloc tname;
           exit 1
         );
@@ -196,6 +192,6 @@ let main_validation (ast : Ast.cool_program) =
         | _ -> false) features
     in
     if not has_paramless_main then (
-      Printf.printf "ERROR: 0: Type-Check: method main() is missing in class Main or has parameters\n";
+      Printf.printf "ERROR: 0: Type-Check: class Main method main with 0 parameters not found\n";
       exit 1
     )
