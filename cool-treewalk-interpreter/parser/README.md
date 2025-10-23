@@ -24,7 +24,7 @@ as arithmetic and comparisons. The grammar closely follows the COOL reference ma
 compatibility with the language definition.
 
 ## Implementation
-The actual grammar is implemented in `142` lines, just above the reference compiler's `116` line implementation.
+The actual grammar is implemented in `131` lines, just above the reference compiler's `116` line implementation.
 AST node types are defined in the parser specification, with OCaml constructors representing classes,
 methods, attributes, and expressions. Grammar rules use line numbered tokens to attach location information
 for error reporting. The parser integrates with the lexer output by deserializing token streams and

@@ -42,8 +42,8 @@ inheritance-based attribute initialization, method dispatch (both static and dyn
 conditionals, loops, and case expressions. Special attention was given to SELF_TYPE handling, object aliasing, and correct propagation 
 of scope across nested blocks and method calls.
 
-Additional test cases were designed to trigger well-defined runtime errors—such as dispatch on void, division by zero, unbound identifiers, 
-and unmatched case branches—to ensure precise and consistent error reporting. Delta debugging was selectively applied to isolate complex 
+Additional test cases were designed to trigger well-defined runtime errors such as dispatch on void, division by zero, unbound identifiers, 
+and unmatched case branches to ensure precise and consistent error reporting. Delta debugging was selectively applied to isolate complex 
 interactions between heap management and dispatch resolution, particularly in programs with deeply nested inheritance or aliasing behavior. 
 All tests operated on well-typed COOL programs to ensure that observed failures reflected true semantic violations rather than earlier lexical 
 or syntactic errors. The successful execution of these tests confirmed that the interpreter faithfully models COOL’s operational semantics and

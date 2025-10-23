@@ -14,7 +14,7 @@ The Lexer phase is responsible for scanning raw COOL source code and producing a
 `tokens` form the smallest meaningful units of the language (or any programming language) such as identifiers,
 keywords, operators, and literals. Lexical analysis is typically the first step toward parsing and ensures later 
 phases receive structured input rather than raw text. Typical errors caught here include unknown characters, 
-unterminated comments, overly long string contacts, and unclosed strings.
+unterminated comments, overly long string constants, and unclosed strings.
 
 ## Design
 The Lexer phase was implemented with OCaml (as well as the sequential phases), specifically the tool OCamllex. It
@@ -38,9 +38,9 @@ and uppercase types. These cases also verified proper whitespace normalization, 
 and successful recognition and termination of nested block comments.
 
 Invalid test cases were used to verify error detection and diagnostic accuracy. These included unterminated or improperly nested comments, 
-unclosed string constants, string literals exceeding the 1024-character limit, and illegal or unknown characters. Each failure scenario was 
+unclosed string constants, string literals exceeding the 1024 character limit, and illegal or unknown characters. Each failure scenario was 
 checked for the correct error message and corresponding line number to ensure consistency with the COOL reference behavior. Overall, the lexer 
-successfully produced serialized token streams for syntactically correct input and precise, specification-compliant error reporting for malformed input.
+successfully produced serialized token streams for syntactically correct input and precise specification compliant error reporting for malformed input.
 
 ## References
 [1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 

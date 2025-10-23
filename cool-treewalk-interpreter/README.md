@@ -3,6 +3,10 @@ Trey Rubino -
 CPSC 425 -
 Dr. Schwesinger
 
+> “Programming languages are the mechanism for communicating with 
+> and commanding the only tool (the computer) available that magnifies 
+> your mind.” - Westley Weimer
+
 ## Project Structure
 - `checker/`: Implements static analysis and semantic checks. Includes class validation, inheritance 
               graph checks, method/attribute type environments, and expression type checking.
@@ -12,14 +16,17 @@ Dr. Schwesinger
             into a stream of tokens.
 - `parser/`: Parsing phase. Uses OCamlyacc to transform token streams into abstract syntax tree (ASTs) 
              according to COOL grammar.
-- `scripts/`: Contains library of bash and Python programs to test automatically test the interpreter on.
+- `reports/`: Contains automatic generated reports from `delta_debug.sh`.
+- `scripts/`: Contains library of bash and Python programs to automatically test the interpreter.
 - `cool-manual.pdf`: The official COOL language specification and reference manual used for grammar, 
                      semantics, and test conformance.
+- `good.cl`: Stack Calculator implementation to be used as the `good.cl` test case for all stages. Uses provided `A2I`
+             class implementation as utility.
 
 ## Overview
 This project implements a tree-walk interpreter for the COOL (Classroom Object-Oriented Language). The interpreter 
 is written in OCaml and follows the traditional compiler pipeline, beginning with lexical analysis and parsing, 
-progressing through semantic analysis, and culminating in interpretation of programs directly from their abstract 
+progressing through semantic analysis, and into interpretation of programs directly from their abstract 
 syntax trees. Each stage is structured as its own subsystem, ensuring separation of concerns while preserving a coherent
 flow from raw source code to runtime execution.  
 
@@ -45,7 +52,7 @@ and loops are reduced directly in the interpreter, reflecting their semantics as
 
 This design balances readability and rigor. Each phase is isolated in its own module so that changes to the lexer, parser, 
 or checker do not disrupt the interpreter’s logic. At the same time, shared type definitions ensure consistency across the system. 
-The resulting structure is both pedagogical and extensible, allowing the project to demonstrate core principles of programming
+The resulting structure is extensible, allowing the project to demonstrate core principles of programming
 language implementation while remaining a foundation for further experimentation, such as bytecode translation or garbage collection.
 
 ## Implementation
@@ -61,15 +68,14 @@ Semantic checking is performed using custom modules that construct and traverse 
 method definitions, and type constraints are validated before execution. Once the AST has been type-annotated, the interpreter 
 traverses it in a recursive descent style, applying evaluation rules node by node.  
 
-At runtime, the system maintains a structured environment that maps variable names to values and provides mechanisms for 
-dynamic dispatch, object instantiation, and attribute initialization. Scoping rules and inheritance are enforced by walking 
-the runtime environment and parent tables, ensuring consistency with the COOL specification. Error handling is incorporated into the
-evaluation process to detect invalid operations such as division by zero or dispatch on void, mirroring the runtime errors described 
-in the language manual.  
+At runtime, coping rules and inheritance are enforced by walking the runtime environment and parent tables, ensuring consistency with 
+the COOL specification. Error handling is incorporated into theevaluation process to detect invalid operations such as division by zero 
+or dispatch on void, mirroring the runtime errors described in the language manual.  
 
-OCaml was chosen not only for technical advantages but also for its alignment with the goals of the project and by recommendation from my advisor. As a language used heavily in research and teaching of programming language theory, OCaml provides the rigor needed for correctness, the 
-flexibility needed for experimentation, and the performance found in the industry. This makes it an ideal platform for implementing a 
-pedagogical interpreter that is faithful to the COOL specification while remaining extensible for future enhancements.
+OCaml was chosen not only for technical advantages but also for its alignment with the goals of the project and by recommendation from my advisor. 
+As a language used heavily in research and teaching of programming language theory, OCaml provides the rigor needed for correctness, the 
+flexibility needed for experimentation, and the performance found in the industry. This makes it an ideal platform for implementing a interpreter 
+that is faithful to the COOL specification while remaining extensible for future enhancements.
 
 ## Build & Run Instructions
 This project is intended for Unix based environments (macOS or Linux).  
@@ -136,22 +142,10 @@ opam install ocamlfind ounit utop dune qcheck
 ```
 ---
 
-### 6. Build and run
-From the project root:  
-- Build the project with `make`.  
-- Interpret a COOL source file with `cooli <source-file.cl>`.
-
 ## An Engineer's Note
-I want to personally thank Dr. Dylan Schwesinger at Kutztown University. He not only served as the overseeing professor for this project,
-as well as the custom bytecode interpreter and garbage collection extension I am currently developing, but he has also been my advisor
-and the single most influential figure in introducing me to the world of programming language theory and compiler construction.  
-
-I first approached him after class in Network Programming to talk about my career goals. At the time, I believed the “magic” of computer
-science was found in firmware and device drivers, and I told him that was what I wanted to pursue. His response was simple but
-transformative: *“Why would you want to do that? There’s so much more out there.”* I took that as an invitation toward programming
-languages and compilers, and within weeks I was enrolled in an independent study in Compiler Design with him. Not long after, he gifted me
-a copy of the second edition of the Dragon Book, which became my entry point into compiler design and a constant reference throughout
-this project.  
+I want to personally thank Dr. Dylan Schwesinger at Kutztown University. He not only served as the overseeing professor for this project, 
+but he has also been my advisor and the single most influential figure in introducing me to the world of programming language theory and 
+compiler construction.  
 
 Dr. Schwesinger, thank you for introducing me to what truly defines the "magic" of computers and puts the "science" in computer science. 
 Your mentorship has reshaped not only this project, but my entire perspective on the field.
