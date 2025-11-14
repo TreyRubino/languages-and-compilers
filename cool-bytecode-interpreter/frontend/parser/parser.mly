@@ -5,7 +5,11 @@
 
 %{
 open Ast
+open Tokens
 exception Error of string
+
+let create_node loc kind = 
+  { loc; expr_kind = kind; static_type = None }
 %}
 
 %token <string * string> STRING IDENTIFIER TYPE INTEGER
@@ -27,26 +31,26 @@ exception Error of string
 %left AT
 %left DOT
 
-%type <program> program
+%type <cool_class list> cool_program
 %type <expr> expr assign_expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base atom
 %type <expr list> expr_list block_elems
 
-%start program
+%start cool_program
 
 %%
 
-program:
+cool_program:
     class_list                                  { $1 }
   ;
 
 class_list:
-    structure SEMI                              { [$1] }
-  | structure SEMI class_list                   { $1 :: $3 }
+    cool_class SEMI                              { [$1] }
+  | cool_class SEMI class_list                   { $1 :: $3 }
   ;
 
-structure:
-    CLASS TYPE LBRACE feature_list RBRACE                 { ClassNoInherits($2, $4) } 
-  | CLASS TYPE INHERITS TYPE LBRACE feature_list RBRACE   { ClassInherits($2, $4, $6) }
+cool_class:
+    CLASS TYPE LBRACE feature_list RBRACE                 { ($2, None, $4) } 
+  | CLASS TYPE INHERITS TYPE LBRACE feature_list RBRACE   { ($2, Some $4, $6) }
   ;
 
 feature_list:
@@ -55,8 +59,8 @@ feature_list:
   ;
 
 feature:
-    IDENTIFIER COLON TYPE                       { AttributeNoInit($1, $3) }  
-  | IDENTIFIER COLON TYPE LARROW expr           { AttributeInit($1, $3, $5) }
+    IDENTIFIER COLON TYPE                       { Attribute($1, $3, None) }  
+  | IDENTIFIER COLON TYPE LARROW expr           { Attribute($1, $3, Some $5) }
   | IDENTIFIER LPAREN formal_list RPAREN COLON TYPE LBRACE expr RBRACE
                                                 { Method($1, $3, $6, $8) }  
   ;
@@ -82,62 +86,62 @@ expr:
   ;
 
 assign_expr:
-    IDENTIFIER LARROW expr                      { let (l,_) = $1 in (l, Assign($1, $3)) }
+    IDENTIFIER LARROW expr                      { let (l,_) = $1 in create_node l (Assign($1, $3)) }
   | cmp_expr                                    { $1 }
   ;
 
 cmp_expr:
-    cmp_expr LT     sum_expr                    { let (l,_) = $1 in (l, Lt($1, $3)) }
-  | cmp_expr LE     sum_expr                    { let (l,_) = $1 in (l, Le($1, $3)) }
-  | cmp_expr EQUALS sum_expr                    { let (l,_) = $1 in (l, Equals($1, $3)) }
+    cmp_expr LT     sum_expr                    { create_node $1.loc (Lt($1, $3)) }
+  | cmp_expr LE     sum_expr                    { create_node $1.loc (Le($1, $3)) }
+  | cmp_expr EQUALS sum_expr                    { create_node $1.loc (Equals($1, $3)) }
   | sum_expr                                    { $1 }
   ;
 
 sum_expr:
-    sum_expr PLUS  product_expr                 { let (l,_) = $1 in (l, Plus($1, $3)) }
-  | sum_expr MINUS product_expr                 { let (l,_) = $1 in (l, Minus($1, $3)) }
+    sum_expr PLUS  product_expr                 { create_node $1.loc (Plus($1, $3)) }
+  | sum_expr MINUS product_expr                 { create_node $1.loc (Minus($1, $3)) }
   | product_expr                                { $1 }
   ;
 
 product_expr:
-    product_expr TIMES  unary_expr              { let (l,_) = $1 in (l, Times($1, $3)) }
-  | product_expr DIVIDE unary_expr              { let (l,_) = $1 in (l, Divide($1, $3)) }
+    product_expr TIMES  unary_expr              { create_node $1.loc (Times($1, $3)) }
+  | product_expr DIVIDE unary_expr              { create_node $1.loc (Divide($1, $3))}
   | unary_expr                                  { $1 }
   ;
 
 unary_expr:
-    TILDE  unary_expr                           { ($1, Tilde($2)) }
-  | NOT    unary_expr                           { ($1, Not($2)) }
-  | ISVOID unary_expr                           { ($1, Isvoid($2)) }
+    TILDE  unary_expr                           { create_node $1 (Tilde($2)) }
+  | NOT    unary_expr                           { create_node $1 (Not($2)) }
+  | ISVOID unary_expr                           { create_node $1 (Isvoid($2)) }
   | atom                                        { $1 }
   ;
 
 atom: 
-    IF expr THEN expr ELSE expr FI              { ($1, If($2, $4, $6)) }
-  | WHILE expr LOOP expr POOL                   { ($1, While($2, $4)) }
-  | LET let_binding_list IN expr                { ($1, Let($2, $4)) }
-  | CASE expr OF case_list ESAC                 { ($1, Case($2, $4)) }
+    IF expr THEN expr ELSE expr FI              { create_node $1 (If($2, $4, $6)) }
+  | WHILE expr LOOP expr POOL                   { create_node $1 (While($2, $4)) }
+  | LET let_binding_list IN expr                { create_node $1 (Let($2, $4)) }
+  | CASE expr OF case_list ESAC                 { create_node $1 (Case($2, $4)) }
   | primary_expr                                { $1 }
   ; 
 
 primary_expr:
     primary_base                                { $1 }
   | primary_expr DOT IDENTIFIER LPAREN expr_list RPAREN
-                                                { let (line, _) = $1 in (line, DynamicDispatch($1, $3, $5)) }
+                                                { create_node $1.loc (DynamicDispatch($1, $3, $5)) }
   | primary_expr AT TYPE DOT IDENTIFIER LPAREN expr_list RPAREN
-                                                { let (line, _) = $1 in (line, StaticDispatch($1, $3, $5, $7)) }
+                                                { create_node $1.loc (StaticDispatch($1, $3, $5, $7)) }
   ;
 
 primary_base:
-    IDENTIFIER LPAREN expr_list RPAREN          { let (line, _) = $1 in (line, SelfDispatch($1, $3)) }
-  | NEW TYPE                                    { ($1, New($2)) }
+    IDENTIFIER LPAREN expr_list RPAREN          { let (l, _) = $1 in create_node l (SelfDispatch($1, $3)) }
+  | NEW TYPE                                    { create_node $1 (New($2)) }
   | LPAREN expr RPAREN                          { $2 }
-  | LBRACE block_elems RBRACE                   { ($1, Block $2) }
-  | IDENTIFIER                                  { let (line, _) = $1 in (line, Identifier($1)) }
-  | INTEGER                                     { let (line, lit) = $1 in (line, Integer(lit)) }
-  | STRING                                      { let (line, lit) = $1 in (line, String(lit)) }
-  | TRUE                                        { ($1, True) }
-  | FALSE                                       { ($1, False) }
+  | LBRACE block_elems RBRACE                   { create_node $1 (Block $2) }
+  | IDENTIFIER                                  { let (l, _) = $1 in create_node l (Identifier($1)) }
+  | INTEGER                                     { let (l, lit) = $1 in create_node l (Integer(lit)) }
+  | STRING                                      { let (l, lit) = $1 in create_node l (String(lit)) }
+  | TRUE                                        { create_node $1 (True) }
+  | FALSE                                       { create_node $1 (False) }
   ;
 
 block_elems:
@@ -146,8 +150,8 @@ block_elems:
   ;
 
 let_binding:
-    IDENTIFIER COLON TYPE                       { LetBindingNoInit($1, $3) }
-  | IDENTIFIER COLON TYPE LARROW expr           { LetBindingInit($1, $3, $5) }
+    IDENTIFIER COLON TYPE                       { ($1, $3, None) }
+  | IDENTIFIER COLON TYPE LARROW expr           { ($1, $3, Some $5) }
   ;
 
 let_binding_list:
@@ -226,7 +230,7 @@ let line_of_token = function
   | IF l | FI l | WHILE l | THEN l -> l
   | EOF -> "1"
 
-let parse (tokens : Tokens.token list) : program = 
+let parse (tokens : Tokens.token list) : cool_program = 
   let q = Queue.create () in 
   List.iter (fun t -> Queue.add t q) tokens;
 
@@ -244,7 +248,7 @@ let parse (tokens : Tokens.token list) : program =
 
   let lexbuf = Lexing.from_string "" in
   try 
-    program next_token lexbuf
+    cool_program next_token lexbuf
   with
   | _ -> 
     let line, near = 

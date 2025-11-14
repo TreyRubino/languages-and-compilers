@@ -23,7 +23,7 @@ $(BUILD):
 
 $(GEN_ML): $(PARSER_MLY) | $(BUILD)
 	$(OCAMLYACC) -v -b $(YACC_BASE) $(PARSER_MLY)
-	@rm -f $(GEN_MLI)  # you don't use it
+	@rm -f $(GEN_MLI) 
 
 $(BUILD)/main.cmo: $(GEN_ML) | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/main.cmo $(GEN_ML)
