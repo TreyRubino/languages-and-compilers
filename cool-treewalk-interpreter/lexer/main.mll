@@ -49,6 +49,7 @@ type token =
 exception UNKNOWN
 exception MAX_LENGTH
 exception NO_CLOSURE
+exception NULL_IN_STRING
 exception EOF 
 
 }
@@ -105,7 +106,8 @@ rule token = parse
   | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm                            { TYPE(lxm) }
   | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm                            { IDENTIFIER(lxm) }    
 
-  | '"' ( [^ '"' '\\' '\n'] | '\\' _ )* '"' as lxm   { if String.length lxm > 1024 then ( raise MAX_LENGTH ) else STRING(String.sub lxm 1 (String.length lxm - 2)) }
+  | '"' ([^ '"' '\\' '\n' '\000'] | '\\' _)* '\000' [^ '"']* '"'              { raise NULL_IN_STRING }
+  | '"' ( [^ '"' '\\' '\n'] | '\\' _ )* '"' as lxm  { if String.length lxm > 1024 then ( raise MAX_LENGTH ) else STRING(String.sub lxm 1 (String.length lxm - 2)) }
 
   | _                                                                         { raise UNKNOWN }
   | eof 			                                                                { raise EOF }
@@ -171,7 +173,7 @@ let main () =
 begin
   try 
     let infile = Sys.argv.(1) in
-    let in_channel = open_in infile in
+    let in_channel = open_in_bin infile in
     let lexbuf = Lexing.from_channel in_channel in
     let outbuf = Buffer.create 255 in
     try
@@ -182,7 +184,8 @@ begin
     with 
     | UNKNOWN     -> Printf.printf "ERROR: %d: Lexer: invalid character: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
     | MAX_LENGTH  -> Printf.printf "ERROR: %d: Lexer: string constant is too long: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
-    | NO_CLOSURE  -> Printf.printf "ERROR: %d: Lexer: EOF in comment\n"(lexbuf.lex_curr_p.pos_lnum + 1); exit 1
+    | NO_CLOSURE  -> Printf.printf "ERROR: %d: Lexer: EOF in comment\n"(lexbuf.lex_curr_p.pos_lnum); exit 1
+    | NULL_IN_STRING -> Printf.printf "ERROR: %d: Lexer: null in string: %s\n" lexbuf.lex_curr_p.pos_lnum (Lexing.lexeme lexbuf) ; exit 1
     | EOF         -> 
       begin
         try 

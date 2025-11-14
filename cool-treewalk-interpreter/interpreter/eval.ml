@@ -51,7 +51,7 @@ let unescape (s : string) : string =
         (match s.[i+1] with
         | 'n'  -> Buffer.add_char buf '\n'  ; loop (i+2)
         | 't'  -> Buffer.add_char buf '\t'  ; loop (i+2)
-        | '"'  -> Buffer.add_char buf '"'   ; loop (i+2)
+        | '"'  -> Buffer.add_char buf '\\'; Buffer.add_char buf '"'; loop (i+2)
         | c    ->
           Buffer.add_char buf '\\';
           Buffer.add_char buf c;
@@ -62,6 +62,9 @@ let unescape (s : string) : string =
   loop 0;
   Buffer.contents buf
 
+let to_int32 (x : int) : int = 
+  Int32.to_int (Int32.of_int x)
+
 let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value list) : value = 
   match qname, args with
   | "Object.abort", _ ->
@@ -71,7 +74,7 @@ let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value
   | "Object.copy", _ -> 
     let new_fields = Hashtbl.create (Hashtbl.length recv.fields) in
     Hashtbl.iter (fun k cell -> Hashtbl.replace new_fields k (ref !cell)) recv.fields;
-    VObj { cls = recv.cls; fields = new_fields }
+    VObj { cls = recv.cls; fields = new_fields; oid = fresh_oid () }
   | "IO.out_string", [VString s] ->
       let unesc = unescape s in
       print_string unesc;
@@ -89,7 +92,7 @@ let dispatch_internal (loc : string) (recv : obj) (qname : string) (args : value
     (try VInt (int_of_string line) with Failure _ -> VInt 0)
   | _ -> runtime_error loc ("internal method not implemented: " ^ qname)
 
-(* hash table to keep track of objects that are being constructed*)
+(* hash table to keep track of objects that are being constructed *)
 let constructing : (string, obj) Hashtbl.t = Hashtbl.create 8
 
 let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : value = 
@@ -118,26 +121,26 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
     let rhs_v = eval env ~self ~scopes rhs in
     let lhs_i = int_of_value e.loc lhs_v in
     let rhs_i = int_of_value e.loc rhs_v in
-    VInt (lhs_i + rhs_i)
+    VInt (to_int32 (lhs_i + rhs_i))
   | Minus (lhs, rhs) -> 
     let lhs_v = eval env ~self ~scopes lhs in
     let rhs_v = eval env ~self ~scopes rhs in
     let lhs_i = int_of_value e.loc lhs_v in
     let rhs_i = int_of_value e.loc rhs_v in
-    VInt (lhs_i - rhs_i)
+    VInt (to_int32 (lhs_i - rhs_i))
   | Times (lhs, rhs) -> 
     let lhs_v = eval env ~self ~scopes lhs in
     let rhs_v = eval env ~self ~scopes rhs in
     let lhs_i = int_of_value e.loc lhs_v in
     let rhs_i = int_of_value e.loc rhs_v in
-    VInt (lhs_i * rhs_i)
+    VInt (to_int32 (lhs_i * rhs_i))
   | Divide (lhs, rhs) -> 
     let lhs_v = eval env ~self ~scopes lhs in
     let rhs_v = eval env ~self ~scopes rhs in
     let lhs_i = int_of_value e.loc lhs_v in
     let rhs_i = int_of_value e.loc rhs_v in
     if rhs_i = 0 then runtime_error e.loc "division by zero"
-    else VInt (lhs_i / rhs_i)
+    else VInt (to_int32 (lhs_i / rhs_i))
   | Lt (lhs, rhs) ->
     let lhs_v = eval env ~self ~scopes lhs in
     let rhs_v = eval env ~self ~scopes rhs in
@@ -168,7 +171,7 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
   | Tilde expr ->
     let expr_v = eval env ~self ~scopes expr in
     let expr_i = int_of_value e.loc expr_v in 
-    VInt (-expr_i)
+    VInt (to_int32 (-expr_i))
   | Not expr -> 
     let expr_v = eval env ~self ~scopes expr in
     let expr_b = bool_of_value e.loc expr_v in
@@ -247,23 +250,12 @@ let rec eval (env : runtime_env) ~(self:obj) ~(scopes:scope list) (e : expr) : v
         bind_local scopes' name scrut_v;
         eval env ~self ~scopes:scopes' body)
   | New (_loc, ty) ->
-    let cls =
-      if ty = "SELF_TYPE" then self.cls else ty
-    in
-    (* 
-    bug found during hair scary evaluation
-    endless recursion on object creation
-    to solve this, we keep track of objects in construction,
-    and instead of starting construction over again, 
-    grab the incomplete instance, and continue construction 
-    from that point.
-    else begin a new construction
-    *)
-    if Hashtbl.mem constructing cls then
+    let cls = if ty = "SELF_TYPE" then self.cls else ty in
+    if Hashtbl.mem constructing cls then (
       VObj (Hashtbl.find constructing cls)
-    else (
+    ) else (
       let obj = new_object_defaults env cls in
-      Hashtbl.replace constructing cls obj;
+      Hashtbl.add constructing cls obj;
       run_initializers env obj ~scopes;
       Hashtbl.remove constructing cls;
       VObj obj

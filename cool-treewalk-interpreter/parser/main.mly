@@ -44,6 +44,7 @@ and let_binding =
 and expr = string * expr_internal
 
 type program = structure list
+
 %}
 
 %token <string * string> STRING IDENTIFIER TYPE INTEGER
@@ -252,13 +253,17 @@ let lexeme_of_token = function
 let deserialize infile = 
   let in_channel = open_in infile in
   let queue = Queue.create () in
-  let get_line () = input_line in_channel in
+  let get_line () = 
+    try 
+      input_line in_channel
+    with End_of_file -> raise End_of_file
+  in
   try 
     while true do
       let l = get_line () in
-      let token_type = get_line () in
+      let token_type =  get_line () in
       let token =
-        match token_type with
+        match String.lowercase_ascii (String.trim token_type) with
         | "plus"        -> PLUS(l)
         | "minus"       -> MINUS(l)
         | "times"       -> TIMES(l)
@@ -302,7 +307,7 @@ let deserialize infile =
         | "identifier"  -> IDENTIFIER(l, get_line ())
         | "type"        -> TYPE(l, get_line ())
         | _             -> printf "ERROR: %s: Parser: invalid token %s\n" l token_type; exit 1
-      in
+      in 
       Queue.add (l, token) queue
     done
   with _ ->  ();
@@ -332,14 +337,14 @@ begin
       program token lexbuf
     with
     | _ ->
-      let near =
+      let line, near =
         match !last_token with
-        | Some (_, t) -> lexeme_of_token t
+        | Some (ln, t) -> ln, lexeme_of_token t
         | None ->
-            if Queue.is_empty queue then "EOF"
-            else let _, t = Queue.peek queue in lexeme_of_token t
+          if Queue.is_empty queue then "1", "EOF"
+          else let ln, t = Queue.peek queue in ln, lexeme_of_token t
       in
-      Printf.printf "ERROR: %s: Parser: syntax error near %s\n" !last_line_number near;
+      printf "ERROR: %s: Parser: syntax error near %s\n" line near;
       exit 1
   in
   

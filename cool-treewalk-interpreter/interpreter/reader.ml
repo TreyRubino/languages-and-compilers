@@ -48,66 +48,66 @@ let rec read_expr_from ic eloc : expr =
   let ekind =
     match tag with
     | "assign" ->
-        let lhs = read_id ic in
-        let rhs = read_expr ic in
-        Assign (lhs, rhs)
+      let lhs = read_id ic in
+      let rhs = read_expr ic in
+      Assign (lhs, rhs)
     | "dynamic_dispatch" ->
-        let recv = read_expr ic in
-        let mid  = read_id ic in
-        let args = read_list ic read_expr in
-        DynamicDispatch (recv, mid, args)
+      let recv = read_expr ic in
+      let mid  = read_id ic in
+      let args = read_list ic read_expr in
+      DynamicDispatch (recv, mid, args)
     | "static_dispatch" ->
-        let recv = read_expr ic in
-        let tyid = read_id ic in
-        let mid  = read_id ic in
-        let args = read_list ic read_expr in
-        StaticDispatch (recv, tyid, mid, args)
+      let recv = read_expr ic in
+      let tyid = read_id ic in
+      let mid  = read_id ic in
+      let args = read_list ic read_expr in
+      StaticDispatch (recv, tyid, mid, args)
     | "self_dispatch" ->
-        let mid  = read_id ic in
-        let args = read_list ic read_expr in
-        SelfDispatch (mid, args)
+      let mid  = read_id ic in
+      let args = read_list ic read_expr in
+      SelfDispatch (mid, args)
     | "if" ->
-        let p = read_expr ic in
-        let t = read_expr ic in
-        let e = read_expr ic in
-        If (p, t, e)
+      let p = read_expr ic in
+      let t = read_expr ic in
+      let e = read_expr ic in
+      If (p, t, e)
     | "while" ->
-        let p = read_expr ic in
-        let b = read_expr ic in
-        While (p, b)
+      let p = read_expr ic in
+      let b = read_expr ic in
+      While (p, b)
     | "let" ->
-        let bindings =
-          read_list ic (fun ic ->
-            match read ic with
-            | "let_binding_no_init" ->
-                let v = read_id ic in
-                let t = read_id ic in
-                (v, t, None)
-            | "let_binding_init" ->
-                let v = read_id ic in
-                let t = read_id ic in
-                let init = read_expr ic in
-                (v, t, Some init)
-            | x -> failwith ("bad let_binding tag: " ^ x)
-          )
-        in
-        let body = read_expr ic in
-        Let (bindings, body)
-    | "case" ->
-        let scrut = read_expr ic in
-        let branches =
-          read_list ic (fun ic ->
+      let bindings =
+        read_list ic (fun ic ->
+          match read ic with
+          | "let_binding_no_init" ->
             let v = read_id ic in
             let t = read_id ic in
-            let br = read_expr ic in
-            (v, t, br)
-          )
-        in
-        Case (scrut, branches)
+            (v, t, None)
+          | "let_binding_init" ->
+            let v = read_id ic in
+            let t = read_id ic in
+            let init = read_expr ic in
+            (v, t, Some init)
+          | x -> failwith ("bad let_binding tag: " ^ x)
+        )
+      in
+      let body = read_expr ic in
+      Let (bindings, body)
+    | "case" ->
+      let scrut = read_expr ic in
+      let branches =
+        read_list ic (fun ic ->
+          let v = read_id ic in
+          let t = read_id ic in
+          let br = read_expr ic in
+          (v, t, br)
+        )
+      in
+      Case (scrut, branches)
     | "new" ->
-        New (read_id ic)
+      New (read_id ic)
     | "isvoid" ->
-        Isvoid (read_expr ic)
+      Isvoid (read_expr ic)
     | "plus"   -> let a = read_expr ic in let b = read_expr ic in Plus (a, b)
     | "minus"  -> let a = read_expr ic in let b = read_expr ic in Minus (a, b)
     | "times"  -> let a = read_expr ic in let b = read_expr ic in Times (a, b)
@@ -123,8 +123,8 @@ let rec read_expr_from ic eloc : expr =
     | "true"    -> True
     | "false"   -> False
     | "block" ->
-        let es = read_list ic read_expr in
-        Block es
+      let es = read_list ic read_expr in
+      Block es
     | x -> failwith ("expression kind unhandled: " ^ x)
   in
   { loc = eloc; expr_kind = ekind; static_type = None }
@@ -143,14 +143,14 @@ let read_class_map ic : (string, class_attrs) Hashtbl.t =
         read_list ic (fun ic ->
           match read ic with
           | "no_initializer" ->
-              let aname = read ic in
-              let atype = read ic in
-              { aname; atype; init = None }
+            let aname = read ic in
+            let atype = read ic in
+            { aname; atype; init = None }
           | "initializer" ->
-              let aname = read ic in
-              let atype = read ic in
-              let init = read_expr ic in
-              { aname; atype; init = Some init }
+            let aname = read ic in
+            let atype = read ic in
+            let init = read_expr ic in
+            { aname; atype; init = Some init }
           | x -> failwith ("bad attribute tag: " ^ x)
         )
       in

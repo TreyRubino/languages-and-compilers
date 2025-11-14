@@ -32,20 +32,20 @@ let rec output_expr (fout : out_channel) (e : expr) =
 		Printf.fprintf fout "%d\n" (List.length args);
 		List.iter (output_expr fout) args
   | Let (bindings, body) ->
-      Printf.fprintf fout "let\n";
-      Printf.fprintf fout "%d\n" (List.length bindings);
-      List.iter (function
-        | (vloc, vname), (tloc, tname), None ->
-            Printf.fprintf fout "let_binding_no_init\n";
-            Printf.fprintf fout "%s\n%s\n" vloc vname;
-            Printf.fprintf fout "%s\n%s\n" tloc tname
-        | (vloc, vname), (tloc, tname), Some init ->
-            Printf.fprintf fout "let_binding_init\n";
-            Printf.fprintf fout "%s\n%s\n" vloc vname;
-            Printf.fprintf fout "%s\n%s\n" tloc tname;
-            output_expr fout init
-      ) bindings;
-      output_expr fout body
+    Printf.fprintf fout "let\n";
+    Printf.fprintf fout "%d\n" (List.length bindings);
+    List.iter (function
+      | (vloc, vname), (tloc, tname), None ->
+        Printf.fprintf fout "let_binding_no_init\n";
+        Printf.fprintf fout "%s\n%s\n" vloc vname;
+        Printf.fprintf fout "%s\n%s\n" tloc tname
+      | (vloc, vname), (tloc, tname), Some init ->
+        Printf.fprintf fout "let_binding_init\n";
+        Printf.fprintf fout "%s\n%s\n" vloc vname;
+        Printf.fprintf fout "%s\n%s\n" tloc tname;
+        output_expr fout init
+    ) bindings;
+    output_expr fout body
 	| Case (scrut, branches) ->
 		Printf.fprintf fout "case\n";
 		output_expr fout scrut;
@@ -103,7 +103,7 @@ let parent_of (ast : cool_program) cname =
 		with Not_found -> None
 
 let rec attributes_of (ast : cool_program) (cname : string)
-  : (string (*aname*) * string (*atype*) * expr option) list =
+  : (string * string * expr option) list =
   let inherited =
     match parent_of ast cname with
     | None -> []
@@ -112,8 +112,8 @@ let rec attributes_of (ast : cool_program) (cname : string)
   let own =
     features_of ast cname
     |> List.filter_map (function
-        | Attribute ((_, aname), (_, atype), init_opt) -> Some (aname, atype, init_opt)
-        | Method _ -> None)
+      | Attribute ((_, aname), (_, atype), init_opt) -> Some (aname, atype, init_opt)
+      | Method _ -> None)
   in
   inherited @ own
 
@@ -184,10 +184,10 @@ let write_all (fname : string) (ast : cool_program) (all_classes : string list) 
     List.iter (fun (aname, atype, init_opt) ->
       match init_opt with
       | None ->
-          Printf.fprintf fout "no_initializer\n%s\n%s\n" aname atype
+        Printf.fprintf fout "no_initializer\n%s\n%s\n" aname atype
       | Some init ->
-          Printf.fprintf fout "initializer\n%s\n%s\n" aname atype;
-          output_expr fout init
+        Printf.fprintf fout "initializer\n%s\n%s\n" aname atype;
+        output_expr fout init
     ) attributes
   ) all_classes;
 

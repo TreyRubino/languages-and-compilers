@@ -11,7 +11,8 @@ the following runtime values
 *)
 type obj = {
   cls : string;
-  fields : (string, value ref) Hashtbl.t
+  fields : (string, value ref) Hashtbl.t;
+  oid : int;
 }
 and value = 
   | VVoid
@@ -58,12 +59,18 @@ let attributes_linearized (env : runtime_env) (cls : string) : attr_info list =
 (*
 run default initializers in ancestor -> descendant order
 *)
+let next_oid = ref 0
+let fresh_oid () =
+  let id = !next_oid in
+  incr next_oid;
+  id
+
 let new_object_defaults (env : runtime_env) (cls : string) : obj = 
   let fields = Hashtbl.create 31 in
   attributes_linearized env cls
   |> List.iter (fun { aname; atype; _} -> 
       Hashtbl.replace fields aname (ref (default_of_type atype)));
-  { cls; fields }
+  { cls; fields; oid = fresh_oid () }
 
 (*
 given the runtime env, loop up the class name in implementation map 

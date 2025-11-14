@@ -19,7 +19,7 @@ for t in "$TEST_CASES"/*.cl; do
 
   test_out_tmp="${t%.*}.out"
   : > "$test_out_tmp"
-  "$TEST_EXE" -c "$t" > "$test_out_tmp"
+  "$TEST_EXE" -p "$t" > "$test_out_tmp"
   mv "${t%.*}".cl-* "$TEST_FILES"/ 2>/dev/null
   if [[ -s "$test_out_tmp" ]]; then
     mv "$test_out_tmp" "$TEST_FILES/$stem.out"
@@ -37,12 +37,18 @@ for t in "$TEST_CASES"/*.cl; do
     stage_out=$("$REF_EXE" --parse "$t" 2>&1)
     if [[ -n "$stage_out" ]]; then
       printf "%s\n" "$stage_out" > "$ref_out_tmp"
-    else
-      stage_out=$("$REF_EXE" --type "$t" 2>&1)
-      if [[ -n "$stage_out" ]]; then
-        printf "%s\n" "$stage_out" > "$ref_out_tmp"
-      fi
     fi
+    #else
+    #  stage_out=$("$REF_EXE" --type "$t" 2>&1)
+    #  if [[ -n "$stage_out" ]]; then
+    #    printf "%s\n" "$stage_out" > "$ref_out_tmp"
+    #  else 
+    #    stage_out=$("$REF_EXE" "$t" 2>&1)
+    #    if [[ -n "$stage_out" ]]; then
+    #      printf "%s\n" "$stage_out" > "$ref_out_tmp"
+     #   fi
+     # fi
+    #fi
   fi
 
   mv "${t%.*}".cl-* "$REF_FILES"/ 2>/dev/null
