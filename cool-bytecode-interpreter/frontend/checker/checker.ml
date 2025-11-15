@@ -8,6 +8,8 @@ open Env
 open Typecheck
 open Validate
 
+exception Error of string
+
 let check (ast : Ast.cool_program) = 
   (
 		let base_classes = [ "Int"; "String"; "Bool"; "IO"; "Object" ] in

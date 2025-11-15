@@ -12,9 +12,7 @@ YACC_BASE  = $(BUILD)/parser
 GEN_ML     = $(YACC_BASE).ml
 GEN_MLI    = $(YACC_BASE).mli
 
-EXECUTABLE = $(BUILD)/parser
-
-all: $(BUILD) $(EXECUTABLE)
+all: $(BUILD) $(BUILD)/parser.cmo
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -26,9 +24,6 @@ $(GEN_ML): $(PARSER_MLY) | $(BUILD)
 $(BUILD)/parser.cmo: $(GEN_ML) | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/parser.cmo $(GEN_ML)
 	@([ -f parser.cmi ] && mv -f parser.cmi $(BUILD)/) || true
-
-$(EXECUTABLE): $(BUILD)/parser.cmo | $(BUILD)
-	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/parser.cmo
 
 clean:
 	rm -rf $(BUILD)

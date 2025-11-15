@@ -23,16 +23,16 @@ let () =
   let ast =
     try Parser.cool_program Lexer.token lexbuf
     with 
-    | Lexer.Error msg -> Printf.printf "%s\n" msg; exit 1
-    | Parser.Error msg -> Printf.printf "%s\n" msg; exit 1
+    | Error.E e -> Error.print e; exit 1
+    | Parsing.Parse_error -> Parser.error lexbuf; exit 1
   in
 
   (* checker *)
-  (*let typed = 
+  let typed = 
     try Checker.check ast
     with
-    | Checker.Error msg -> Printf.printf "%s\n" msg; exit 1
-  in *)
+    | Error.E e -> Error.print e; exit 1
+  in
 
   (* codegen *)
 

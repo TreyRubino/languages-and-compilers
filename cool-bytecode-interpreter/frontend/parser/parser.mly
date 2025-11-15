@@ -5,8 +5,17 @@
 
 %{
 open Ast
-exception Error of string
+open Error
 
+let error lexbuf = 
+  let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
+  let lexeme = Lexing.lexeme lexbuf in
+  Error.print {
+    Error.phase = "Parser";
+    line;
+    msg = Printf.sprintf "syntax error near %s" lexeme;
+  }
+  
 let create_node loc kind = 
   { loc; expr_kind = kind; static_type = None }
 %}
@@ -31,7 +40,8 @@ let create_node loc kind =
 %left DOT
 
 %type <cool_class list> cool_program
-%type <expr> expr assign_expr cmp_expr sum_expr product_expr unary_expr primary_expr primary_base atom
+%type <expr> expr assign_expr cmp_expr sum_expr product_expr 
+%type <expr> unary_expr primary_expr primary_base atom
 %type <expr list> expr_list block_elems
 
 %start cool_program

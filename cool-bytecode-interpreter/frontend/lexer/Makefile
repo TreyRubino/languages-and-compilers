@@ -10,9 +10,7 @@ BUILD = ../../build
 MAIN_MLL = lexer.mll
 GEN_ML   = $(BUILD)/lexer.ml
 
-EXECUTABLE = $(BUILD)/lexer
-
-all: $(BUILD) $(EXECUTABLE)
+all: $(BUILD) $(BUILD)/lexer.cmo
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -23,9 +21,6 @@ $(GEN_ML): $(MAIN_MLL) | $(BUILD)
 $(BUILD)/lexer.cmo: $(GEN_ML) | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/lexer.cmo $(GEN_ML)
 	@([ -f lexer.cmi ] && mv -f lexer.cmi $(BUILD)/) || true
-
-$(EXECUTABLE): $(BUILD)/lexer.cmo
-	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/lexer.cmo
 
 clean:
 	rm -f $(BUILD)/lexer.ml

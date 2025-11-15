@@ -5,16 +5,10 @@
 
 {
 open Parser
-exception Error of string
+open Error
 
 let line_str lexbuf =
   string_of_int lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum
-
-let lex_error lexbuf fmt = 
-  let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
-  let lex = Lexing.lexeme lexbuf in
-  let msg = Printf.sprintf fmt line lex in
-  raise (Error msg)
 }
 
 rule token = parse
@@ -71,22 +65,22 @@ rule token = parse
   | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm                  { TYPE       (line_str lexbuf, lxm) }
   | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm                  { IDENTIFIER (line_str lexbuf, lxm) }    
 
-  | '"' ([^ '"' '\\' '\n' '\000'] | '\\' _)* '\000' [^ '"']* '"'
-                                                                    { lex_error lexbuf "ERROR: %d: Lexer: null in string: %s" }
+  | '"' ([^ '"' '\\' '\n' '\000'] | '\\' _)* '\000' [^ '"']* '"' as lxm
+                                                                    { Error.lexer lexbuf "null in string %s" lxm }
   | '"' ( [^ '"' '\\' '\n'] | '\\' _ )* '"' as lxm      { 
         if String.length lxm > 1024 then
-          lex_error lexbuf "ERROR: %d: Lexer: string constant is too long: %s"
+          Error.lexer lexbuf "string constant is too long"
         else
           let inner = String.sub lxm 1 (String.length lxm - 2) in
           STRING (line_str lexbuf, inner)
       }
 
-  | _                                                               { lex_error lexbuf "ERROR: %d: Lexer: invalid character: %s" }
+  | _ as lxm                                                        { Error.lexer lexbuf "invalid character %c" lxm }
   | eof 			                                                      { EOF }
 
 and comment depth start_line = parse
   | "(*"                                                            { comment (depth + 1) start_line lexbuf }
   | "*)"                                                            { if depth = 1 then token lexbuf else comment (depth - 1) start_line lexbuf }
   | '\n'                                                            { Lexing.new_line lexbuf ; comment depth start_line lexbuf }
-  | eof                                                             { lex_error lexbuf "ERROR: %d: Lexer: EOF in comment: %s" }
+  | eof                                                             { Error.lexer lexbuf "EOF in comment" }
   | _                                                               { comment depth start_line lexbuf }

@@ -12,8 +12,8 @@ LEXER   = frontend/lexer
 PARSER  = frontend/parser
 CHECKER = frontend/checker
 
-CORE_SRC = $(CORE)/ast.ml
-CORE_CMO = $(BUILD)/ast.cmo
+CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml
+CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo
 
 MAIN = main.ml
 MAIN_CMO = $(BUILD)/main.cmo
@@ -21,6 +21,7 @@ MAIN_CMO = $(BUILD)/main.cmo
 EXEC = cooli
 
 OBJS = \
+	$(BUILD)/error.cmo \
   $(BUILD)/ast.cmo \
   $(BUILD)/lexer.cmo \
   $(BUILD)/parser.cmo \
