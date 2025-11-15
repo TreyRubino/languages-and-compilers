@@ -12,8 +12,10 @@ LEXER   = frontend/lexer
 PARSER  = frontend/parser
 CHECKER = frontend/checker
 
-CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml
-CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo
+CODEGEN = backend/codegen
+
+CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml $(CORE)/semantics.ml
+CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo $(BUILD)/semantics.cmo 
 
 MAIN = main.ml
 MAIN_CMO = $(BUILD)/main.cmo
@@ -23,12 +25,14 @@ EXEC = cooli
 OBJS = \
 	$(BUILD)/error.cmo \
   $(BUILD)/ast.cmo \
+	$(BUILD)/semantics.cmo \
   $(BUILD)/lexer.cmo \
   $(BUILD)/parser.cmo \
   $(BUILD)/env.cmo \
   $(BUILD)/validate.cmo \
   $(BUILD)/typecheck.cmo \
   $(BUILD)/checker.cmo \
+	$(BUILD)/codegen.cmo \
   $(BUILD)/main.cmo
 
 all: $(BUILD) core modules $(EXEC)
@@ -50,6 +54,7 @@ modules:
 	make -C $(PARSER)
 	make -C $(LEXER)
 	make -C $(CHECKER)
+	make -C $(CODEGEN)
 
 $(EXEC): $(OBJS)
 	$(OCAMLC) -I $(BUILD) -o $(EXEC) $(OBJS)

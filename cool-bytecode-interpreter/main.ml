@@ -28,13 +28,18 @@ let () =
   in
 
   (* checker *)
-  let typed = 
+  let semantic_env = 
     try Checker.check ast
     with
     | Error.E e -> Error.print e; exit 1
   in
 
   (* codegen *)
+  let bytecode = 
+    try Codegen.emit semantic_env
+    with
+    | Error.E e -> Error.print e; exit 1
+  in 
 
   (* vm *)
   ()

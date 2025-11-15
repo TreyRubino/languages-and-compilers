@@ -7,8 +7,7 @@ open Ast
 open Env
 open Typecheck
 open Validate
-
-exception Error of string
+open Semantics
 
 let check (ast : Ast.cool_program) = 
   (
@@ -52,4 +51,50 @@ let check (ast : Ast.cool_program) =
 		List.iter (fun ((_, cname), _inherits, features) ->
 			type_check_class cname ((("", cname)), None, features)
 		) ast;
+
+    let env = Semantics.empty_env () in
+
+    Hashtbl.iter (fun cls attrs_tbl ->
+      let attrs =
+        Hashtbl.fold (fun name ty acc ->
+          let init =
+            match List.find_opt (function
+              | Attribute ((_, aname), _, _) when aname = name -> true
+              | _ -> false
+            ) (List.concat (List.map (fun ((_, c), _, f) -> if c = cls then f else []) ast)) with
+            | Some (Attribute (_, _, init_opt)) -> init_opt
+            | _ -> None
+          in
+          { aname = name; atype = ty; init } :: acc
+        ) attrs_tbl []
+      in
+      Hashtbl.replace env.class_map cls attrs
+    ) attribute_env;
+
+    Hashtbl.iter (fun cls methods_tbl ->
+      let tbl = Hashtbl.create 31 in
+      Hashtbl.iter (fun mname sig_ ->
+        let body =
+          match List.find_opt (function
+            | Method ((_loc, n), _, _, _) when n = mname -> true
+            | _ -> false
+          ) (List.concat (List.map (fun ((_, c), _, f) -> if c = cls then f else []) ast)) with
+          | Some (Method (_, _, _, b)) -> User b
+          | _ -> Internal { rtype = sig_.ret; qname = cls ^ "." ^ mname }
+        in
+        let impl = {
+          definer = sig_.definer;
+          formals = sig_.formals;
+          body;
+        } in
+        Hashtbl.replace tbl mname impl
+      ) methods_tbl;
+      Hashtbl.replace env.impl_map cls tbl
+    ) method_env;
+
+    Hashtbl.iter (fun c p ->
+      Hashtbl.replace env.parent_map c p
+    ) parent_map;
+
+    env
   );;

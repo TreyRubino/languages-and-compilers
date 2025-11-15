@@ -2,6 +2,7 @@
 
 open Ast
 open Env
+open Error
 
 type object_env = (string, static_type) Hashtbl.t
 let empty_object_env () = Hashtbl.create 255
