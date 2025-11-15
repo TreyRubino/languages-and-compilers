@@ -3,3 +3,23 @@
 # Dr. Schwesinger
 # Codegen build
 
+OCAMLC = ocamlc
+BUILD = ../../build
+
+ML = codegen.ml
+CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
+
+all: $(BUILD) $(CMO)
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+$(BUILD)/%.cmo: %.ml | $(BUILD)
+	$(OCAMLC) -I $(BUILD) -c -o $@ $<
+	@([ -f $*.cmi ] && mv -f $*.cmi $(BUILD)/) || true
+
+clean: 
+	rm -rf $(BUIlD)
+
+.PHONY: all clean
+

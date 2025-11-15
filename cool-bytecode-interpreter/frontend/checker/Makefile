@@ -5,8 +5,6 @@
 OCAMLC = ocamlc
 BUILD  = ../../build
 
-EXECUTABLE = $(BUILD)/checker
-
 ML  = env.ml typecheck.ml validate.ml checker.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 

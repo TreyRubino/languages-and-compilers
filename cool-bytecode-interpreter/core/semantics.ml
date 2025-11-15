@@ -5,7 +5,7 @@
 
 open Ast
 
-type attr_info = {
+type attr_impl = {
   aname : string;
   atype : string;
   init  : expr option;
@@ -21,7 +21,7 @@ type method_impl = {
   body    : method_body;
 }
 
-type class_attrs   = attr_info list
+type class_attrs   = attr_impl list
 type class_methods = (string, method_impl) Hashtbl.t
 
 type semantic_env = {

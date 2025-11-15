@@ -23,9 +23,6 @@ $(BUILD)/lexer.cmo: $(GEN_ML) | $(BUILD)
 	@([ -f lexer.cmi ] && mv -f lexer.cmi $(BUILD)/) || true
 
 clean:
-	rm -f $(BUILD)/lexer.ml
-	rm -f $(BUILD)/lexer.cmo
-	rm -f $(BUILD)/lexer.cmi
-	rm -f $(EXECUTABLE)
+	rm -rf $(BUILD)
 
 .PHONY: all clean
