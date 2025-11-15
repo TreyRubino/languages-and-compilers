@@ -4,7 +4,7 @@
 *)
 
 {
-open Tokens
+open Parser
 exception Error of string
 
 let line_str lexbuf =
@@ -82,7 +82,7 @@ rule token = parse
       }
 
   | _                                                               { lex_error lexbuf "ERROR: %d: Lexer: invalid character: %s" }
-  | eof 			                                                      { raise End_of_file }
+  | eof 			                                                      { EOF }
 
 and comment depth start_line = parse
   | "(*"                                                            { comment (depth + 1) start_line lexbuf }
@@ -90,16 +90,3 @@ and comment depth start_line = parse
   | '\n'                                                            { Lexing.new_line lexbuf ; comment depth start_line lexbuf }
   | eof                                                             { lex_error lexbuf "ERROR: %d: Lexer: EOF in comment: %s" }
   | _                                                               { comment depth start_line lexbuf }
-
-{
-let tokenize (source : string) : Tokens.token list = 
-  let lexbuf = Lexing.from_string source in 
-  let rec loop acc = 
-    try
-      let tok = token lexbuf in
-      loop (tok :: acc)
-    with
-    End_of_file -> List.rev acc
-  in
-  loop []
-}

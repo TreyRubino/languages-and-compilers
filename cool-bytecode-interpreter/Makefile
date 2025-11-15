@@ -1,5 +1,7 @@
 # Trey Rubino
-# Top-level build
+# CPSC 372 Independent Study
+# Dr. Schwesinger
+# Lexer build
 
 OCAMLC = ocamlc
 BUILD  = build
@@ -10,13 +12,25 @@ LEXER   = frontend/lexer
 PARSER  = frontend/parser
 CHECKER = frontend/checker
 
-CODEGEN = backend/codegen
-VM = backend/vm
+CORE_SRC = $(CORE)/ast.ml
+CORE_CMO = $(BUILD)/ast.cmo
 
-CORE_SRC = $(CORE)/tokens.ml $(CORE)/ast.ml
-CORE_CMO = $(BUILD)/tokens.cmo $(BUILD)/ast.cmo
+MAIN = main.ml
+MAIN_CMO = $(BUILD)/main.cmo
 
-all: $(BUILD) core modules
+EXEC = cooli
+
+OBJS = \
+  $(BUILD)/ast.cmo \
+  $(BUILD)/lexer.cmo \
+  $(BUILD)/parser.cmo \
+  $(BUILD)/env.cmo \
+  $(BUILD)/validate.cmo \
+  $(BUILD)/typecheck.cmo \
+  $(BUILD)/checker.cmo \
+  $(BUILD)/main.cmo
+
+all: $(BUILD) core modules $(EXEC)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -27,12 +41,20 @@ $(BUILD)/%.cmo: $(CORE)/%.ml | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $@ $<
 	@([ -f $(basename $<).cmi ] && mv -f $(basename $<).cmi $(BUILD)/) || true
 
+$(MAIN_CMO): $(MAIN) | $(BUILD)
+	$(OCAMLC) -I $(BUILD) -c -o $(MAIN_CMO) $(MAIN)
+	@([ -f main.cmi ] && mv -f main.cmi $(BUILD)/) || true
+
 modules:
-	make -C $(LEXER)
 	make -C $(PARSER)
+	make -C $(LEXER)
 	make -C $(CHECKER)
+
+$(EXEC): $(OBJS)
+	$(OCAMLC) -I $(BUILD) -o $(EXEC) $(OBJS)
 
 clean:
 	rm -rf $(BUILD)
+	rm -f $(EXEC)
 
 .PHONY: all core modules clean

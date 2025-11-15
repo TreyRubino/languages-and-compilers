@@ -20,12 +20,12 @@ $(BUILD):
 $(GEN_ML): $(MAIN_MLL) | $(BUILD)
 	$(OCAMLLEX) -o $(GEN_ML) $(MAIN_MLL)
 
-$(BUILD)/lexer.cmo: $(GEN_ML) $(BUILD)/tokens.cmo | $(BUILD)
+$(BUILD)/lexer.cmo: $(GEN_ML) | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $(BUILD)/lexer.cmo $(GEN_ML)
 	@([ -f lexer.cmi ] && mv -f lexer.cmi $(BUILD)/) || true
 
-$(EXECUTABLE): $(BUILD)/tokens.cmo $(BUILD)/lexer.cmo
-	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/tokens.cmo $(BUILD)/lexer.cmo
+$(EXECUTABLE): $(BUILD)/lexer.cmo
+	$(OCAMLC) -I $(BUILD) -o $(EXECUTABLE) $(BUILD)/lexer.cmo
 
 clean:
 	rm -f $(BUILD)/lexer.ml
