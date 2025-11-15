@@ -23,11 +23,26 @@ let lexer lexbuf fmt =
   let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
   raisef ~phase:"Lexer" ~line fmt
 
-let checker loc fmt = 
-  raisef ~phase:"Type-Check" ~line:loc fmt
+let parser lexbuf = 
+  let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
+  let lexeme = Lexing.lexeme lexbuf in
+  print {
+    phase = "Parser";
+    line;
+    msg = Printf.sprintf "syntax error near %s" lexeme;
+  }
+
+let checker loc fmt =
+  let line =
+    try int_of_string loc
+    with _ -> 0
+  in
+  raisef ~phase:"Type-Check" ~line fmt
 
 let codegen loc fmt =
   raisef ~phase:"Codegen" ~line:loc fmt
 
 let vm pc fmt = 
   raisef ~phase:"Exception" ~line:pc fmt
+
+  

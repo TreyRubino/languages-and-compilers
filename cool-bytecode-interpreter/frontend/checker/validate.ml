@@ -5,18 +5,17 @@
 
 open Ast
 open Env
+open Error
 
 (* has a base class been redefined? or has a user class been duplicated? *)
 let dups_base_validation ~base_classes (ast : cool_program) =
   let seen = Hashtbl.create 255 in
   List.iter (fun ((cloc, cname), _inherits, _features) ->
     if List.mem cname base_classes then (
-      Printf.printf "ERROR: %s: Type-Check: redefining base class %s\n" cloc cname; 
-      exit 1
+      Error.checker cloc "redefining base class %s" cname
     );
     if Hashtbl.mem seen cname then (
-      Printf.printf "ERROR: %s: Type-Check: duplicate class %s\n" cloc cname; 
-      exit 1
+      Error.checker cloc "duplicate class %s" cname
     );
     Hashtbl.add seen cname true
   ) ast
@@ -30,16 +29,13 @@ let parent_validation ~all_classes (ast : cool_program) =
     | None -> ()
     | Some (iloc, iname) ->
         if iname = cname then (
-          Printf.printf "ERROR: %s: Type-Check: class cannot inherit from itself (%s)\n" iloc cname; 
-          exit 1
+          Error.checker iloc "class cannot inherit from itself (%s)" cname
         );
         if List.mem iname forbidden then (
-          Printf.printf "ERROR: %s: Type-Check: class %s inherits from %s\n" iloc cname iname; 
-          exit 1
+          Error.checker iloc "class %s inherits from %s" cname iname
         );
         if not (List.mem iname all_classes) then (
-          Printf.printf "ERROR: %s: Type-Check: inheriting from undefined class %s\n" iloc iname; 
-          exit 1
+          Error.checker iloc "inheriting from undefined class %s" iname
         )
   ) ast;
   (* cycle detection / rooting at Object *)
@@ -62,8 +58,7 @@ let parent_validation ~all_classes (ast : cool_program) =
   (* is there an inheritance cycle? *)
   List.iter (fun c ->
     if c <> "Object" && dfs c then (
-      Printf.printf "ERROR: 0: Type-Check: inheritance cycle\n"; 
-      exit 1
+      Error.checker "0" "inheritance cycle"
     )
   ) all_classes
 
@@ -73,22 +68,18 @@ let decl_types_validation ~all_classes (ast : cool_program) =
     List.iter (function
       | Attribute ((_aloc, _name), (tloc, tname), _init) ->
         if tname <> "SELF_TYPE" && not (type_exists tname) then (
-          Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tloc tname;
-          exit 1
+          Error.checker tloc "unknown type %s" tname
         );
       | Method ((_mloc, _mname), formals, (rtloc, rtype), _body) -> 
         if rtype <> "SELF_TYPE" && not (type_exists rtype) then (
-          Printf.printf "ERROR: %s: Type-Check: unknown return type %s\n" rtloc rtype;
-          exit 1 
+          Error.checker rtloc "unknown return type" rtype    
         );  
         List.iter (fun ((_floc, _fname), (ftloc, ftname)) -> 
           if ftname = "SELF_TYPE" then (
-            Printf.printf "ERROR: %s: Type-Check: SELF_TYPE not allowed as formal type\n" ftloc; 
-            exit 1
+            Error.checker ftloc "SELF_TYPE not allowed as formal type"
           );
           if not (type_exists ftname) then (
-            Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" ftloc ftname;
-            exit 1
+            Error.checker ftloc "unknown type %s" ftname
           )
         ) formals
     ) features
@@ -109,18 +100,15 @@ let override_validation (ast : cool_program) =
         | Some parent_sig -> 
           let child_formals = List.map (fun (_fid, (_tl, tn)) -> tn) formals in
           if List.length parent_sig.formals <> List.length child_formals then (
-            Printf.printf "ERROR: %s: Type-Check: redefining method %s with different arity\n" mloc mname;
-            exit 1
+            Error.checker mloc "redefining method %s with different arity" mname
           );
           List.iter2 (fun p c ->
             if p <> c then (
-              Printf.printf "ERROR: %s: Type-Check: redefining method %s with different parameter types\n" mloc mname;
-              exit 1
+              Error.checker mloc "redefining method %s with different parameter types" mname
             )
           ) parent_sig.formals child_formals;
           if parent_sig.ret <> rtype then (
-            Printf.printf "ERROR: %s: Type-Check: redefining method %s with different return type\n" mloc mname;
-            exit 1
+            Error.checker mloc "redefining method %s with different return type" mname
           ))
       | Attribute _ -> () 
     ) features
@@ -142,25 +130,21 @@ let names_scoping_validation (ast : cool_program) =
       | Attribute ((aloc, aname), _, _) ->
         (* no self as attr *)
         if aname = "self" then (
-          Printf.printf "ERROR: %s: Type-Check: attribute cannot be named self\n" aloc;
-          exit 1
+          Error.checker aloc "attribute cannot be name self"
         );  
         (* no duplicate attributes inside the same class *)
         if Hashtbl.mem seen_attrs aname then (
-          Printf.printf "ERROR: %s: Type-Check: duplicate attribute %s in class %s\n" aloc aname cname;
-          exit 1
+          Error.checker aloc "duplicate attribute %s in class %s" aname cname
         );
         Hashtbl.add seen_attrs aname true;
         (* no attribute redefinition from ancestors *)
         if Hashtbl.mem inherited_attrs aname then (
-          Printf.printf "ERROR: %s: Type-Check: attribute %s redefined from ancestor in class %s\n" aloc aname cname;
-          exit 1
+          Error.checker aloc "attribute %s redefined from ancestor in class %s" aname cname
         )
       | Method ((mloc, mname), formals, _ret, _body) ->
         (* no duplicate methods inside the same class *)
         if Hashtbl.mem seen_meths mname then (
-          Printf.printf "ERROR: %s: Type-Check: duplicate method %s in class %s\n" mloc mname cname;
-          exit 1
+          Error.checker mloc "duplicate method %s in class" mname cname
         );
         Hashtbl.add seen_meths mname true;
 
@@ -168,12 +152,10 @@ let names_scoping_validation (ast : cool_program) =
         let seen_formals = Hashtbl.create 31 in
         List.iter (fun ((floc, fname), _fty) ->
           if fname = "self" then (
-            Printf.printf "ERROR: %s: Type-Check: formal cannot be named self\n" floc;
-            exit 1
+            Error.checker floc "formal cannot be named self"
           );
           if Hashtbl.mem seen_formals fname then (
-            Printf.printf "ERROR: %s: Type-Check: duplicate formal %s in method %s\n" floc fname mname;
-            exit 1
+            Error.checker floc "duplicate formal %s in method %s" fname mname
           );
           Hashtbl.add seen_formals fname true
         ) formals
@@ -184,7 +166,7 @@ let names_scoping_validation (ast : cool_program) =
 let main_validation (ast : Ast.cool_program) =
   match List.find_opt (fun ((_, cname), _, _) -> cname = "Main") ast with
   | None ->
-    Printf.printf "ERROR: 0: Type-Check: class Main is missing\n"; exit 1
+    Error.checker "0" "class Main is missing"
   | Some (_id, _inh, features) ->
     let has_paramless_main =
       List.exists (function
@@ -192,6 +174,5 @@ let main_validation (ast : Ast.cool_program) =
         | _ -> false) features
     in
     if not has_paramless_main then (
-      Printf.printf "ERROR: 0: Type-Check: class Main method main with 0 parameters not found\n";
-      exit 1
+      Error.checker "0" "class Main method main with 0 parameters not found"
     )

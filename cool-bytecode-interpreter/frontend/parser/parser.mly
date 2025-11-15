@@ -5,17 +5,6 @@
 
 %{
 open Ast
-open Error
-
-let error lexbuf = 
-  let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
-  let lexeme = Lexing.lexeme lexbuf in
-  Error.print {
-    Error.phase = "Parser";
-    line;
-    msg = Printf.sprintf "syntax error near %s" lexeme;
-  }
-  
 let create_node loc kind = 
   { loc; expr_kind = kind; static_type = None }
 %}

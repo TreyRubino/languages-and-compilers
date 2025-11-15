@@ -10,7 +10,7 @@ EXECUTABLE = $(BUILD)/checker
 ML  = env.ml typecheck.ml validate.ml checker.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
-all: $(BUILD) $(EXECUTABLE)
+all: $(BUILD) $(CMO)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -18,9 +18,6 @@ $(BUILD):
 $(BUILD)/%.cmo: %.ml | $(BUILD)
 	$(OCAMLC) -I $(BUILD) -c -o $@ $<
 	@([ -f $*.cmi ] && mv -f $*.cmi $(BUILD)/) || true
-
-$(EXECUTABLE): $(CMO) | $(BUILD)
-	$(OCAMLC) -I $(BUILD) -o $@ $(CMO)
 
 clean:
 	rm -rf $(BUILD)

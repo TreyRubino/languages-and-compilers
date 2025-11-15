@@ -24,7 +24,7 @@ let () =
     try Parser.cool_program Lexer.token lexbuf
     with 
     | Error.E e -> Error.print e; exit 1
-    | Parsing.Parse_error -> Parser.error lexbuf; exit 1
+    | Parsing.Parse_error -> Error.parser lexbuf; exit 1
   in
 
   (* checker *)

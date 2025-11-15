@@ -36,11 +36,11 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 		List.iter (fun e ->
 			match type_check current_class o e with
 			| Class t when t = expected -> ()
-			| Class x -> (Printf.printf "ERROR: %s: Type-Check: comparison/arithmetic on type %s instead of type %s\n" expr.loc x expected; exit 1)
+			| Class x -> (Error.checker expr.loc "comparison/arithmetic on type %s instead of type %s" x expected)
 			| SELF_TYPE _ ->
 				(* SELF_TYPE not allowed for Int/String/Bool ops *)
 				if expected = "Int" || expected = "Bool" || expected = "String"
-				then (Printf.printf "ERROR: %s: Type-Check: SELF_TYPE not allowed where %s expected\n" expr.loc expected; exit 1)
+				then (Error.checker expr.loc "SELF_TYPE not allowed where %s expected" expected) 
 		) exprs;
 		Class expected
 	in
@@ -53,19 +53,18 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 
 		| Identifier ((vloc, vname)) ->
 			if Hashtbl.mem o vname then Hashtbl.find o vname
-			else (Printf.printf "ERROR: %s: Type-Check: undeclared variable %s\n" vloc vname; exit 1)
+			else (Error.checker vloc "undeclared variable %s" vname)
 
 		| Assign ((vloc, vname), e) ->
       if vname = "self" then (
-        Printf.printf "ERROR: %s: Type-Check: cannot assign to self\n" vloc;
-        exit 1
+        Error.checker vloc "cannot assign to self"
       );
 			if Hashtbl.mem o vname then
 				let declared = Hashtbl.find o vname in
 				let et = type_check current_class o e in
 				if is_subtype et declared then et
-        else (Printf.printf "ERROR: %s: Type-Check: assignment on type %s does not conform to type %s\n" expr.loc (string_of_type et) (string_of_type declared); exit 1)
-			else (Printf.printf "ERROR: %s: Type-Check: undeclared variable %s\n" vloc vname; exit 1)
+        else (Error.checker expr.loc "assignment on type %s does not conform to type %s" (string_of_type et) (string_of_type declared)) 
+			else (Error.checker vloc "undeclared variable %s" vname) 
 
 		| Plus (x, y)   -> check [x; y] "Int"
 		| Minus (x, y)  -> check [x; y] "Int"
@@ -80,7 +79,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			let t2 = type_check current_class o y in
 			if is_primitive t1 || is_primitive t2 then
 				if t1 <> t2 then (
-          Printf.printf "ERROR: %s: Type-Check: equality on primitive types requires identical types. Got %s and %s\n" expr.loc (string_of_type t1) (string_of_type t2); exit 1
+          Error.checker expr.loc "equality on primitive types requires identical types. Got %s and %s" (string_of_type t1) (string_of_type t2)
         );
 			Class "Bool"
 
@@ -93,7 +92,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 		| If (p, tbr, ebr) ->
 			let pt = type_check current_class o p in
 			if pt <> Class "Bool" then (
-        Printf.printf "ERROR: %s: Type-Check: conditional has type %s instead of Bool\n" expr.loc (string_of_type pt); exit 1
+        Error.checker expr.loc "conditional has type %s instead of Bool" (string_of_type pt)
       );
 			let tt = type_check current_class o tbr in
 			let et = type_check current_class o ebr in
@@ -102,7 +101,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 		| While (p, b) ->
 			let pt = type_check current_class o p in
 			if pt <> Class "Bool" then (
-        Printf.printf "ERROR: %s: Type-Check: predicate has type %s instead of Bool\n" expr.loc (string_of_type pt); exit 1
+        Error.checker expr.loc "predicate has type %s instead of Bool" (string_of_type pt)
       );
 			ignore (type_check current_class o b);
 			Class "Object"
@@ -113,12 +112,10 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
       List.iter (fun ((vloc, vname), (tloc, tname), init_opt) ->
         (* name / type legality *)
         if vname = "self" then (
-          Printf.printf "ERROR: %s: Type-Check: cannot bind 'self' in let\n" vloc;
-          exit 1
+          Error.checker vloc "cannot bind 'self' in let"
         );
         if tname <> "SELF_TYPE" && not (class_exists tname) then (
-          Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tloc tname;
-          exit 1
+          Error.checker tloc "unknown type %s" tname
         );
         (match init_opt with
         | None -> ()
@@ -126,7 +123,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
           let it = type_check current_class o init in
           let declared = if tname = "SELF_TYPE" then SELF_TYPE current_class else Class tname in
           if not (is_subtype it declared) then (
-            Printf.printf "ERROR: %s: Type-Check: initializer type %s does not conform to type %s\n" lloc (string_of_type it) tname; exit 1 
+            Error.checker lloc "initializer type %s does not conform to type %s" (string_of_type it) tname
           ););
           Hashtbl.add o vname (if tname = "SELF_TYPE" then SELF_TYPE current_class else Class tname);
         cleanup := vname :: !cleanup;
@@ -144,20 +141,18 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
       List.iter (fun ((vloc, vname), (tl, tname), br) ->
         (* cannot bind self *)
         if vname = "self" then (
-          Printf.printf "ERROR: %s: Type-Check: cannot bind 'self' in case branch\n" vloc; exit 1
+          Error.checker vloc "cannot bind 'self' in case branch" vloc 
         );
         if tname = "SELF_TYPE" then (
-          Printf.printf "ERROR: %s: Type-Check: SELF_TYPE not allowed as case branch type\n" tl; 
-          exit 1
+          Error.checker tl "SELF_TYPE not allowed as case branch type"
         );  
         (* branch types must be distinct *)
         if Hashtbl.mem seen tname then (
-          Printf.printf "ERROR: %s: Type-Check: case branch type %s is bound twice\n" vloc tname; exit 1
+          Error.checker vloc "case branch type %s is bound twice" tname
         ) else Hashtbl.add seen tname true;
 
         if not (class_exists tname) then (
-          Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tl tname;
-          exit 1
+          Error.checker tl "unknown type %s" tname
         );
         Hashtbl.add o vname (Class tname);
         let bt = type_check current_class o br in
@@ -177,8 +172,7 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			if tname = "SELF_TYPE" then SELF_TYPE current_class 
       else (
         if not (class_exists tname) then (
-          Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tloc tname;
-          exit 1
+          Error.checker tloc "unknown type %s" tname
         );
         Class tname
       )
@@ -187,15 +181,15 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			let recv_cls = current_class in
 			(match lookup_method_sig recv_cls mname with
 			| None ->
-				Printf.printf "ERROR: %s: Type-Check: unknown method %s on %s\n" mloc mname recv_cls; exit 1
+        Error.checker mloc "unknown method %s on %s" mname recv_cls
 			| Some sign ->
 				if List.length sign.formals <> List.length args then (
-          Printf.printf "ERROR: %s: Type-Check: method '%s' expected %d arguments, but %d was given\n" expr.loc mname (List.length sign.formals) (List.length args); exit 1
+          Error.checker expr.loc "method %s expected %d arguments, but %d was given" mname (List.length sign.formals) (List.length args)
         );
 				List.iter2 (fun a ft ->
 					let at = type_check current_class o a in
 					if not (is_subtype at (Class ft)) then (
-            Printf.printf "ERROR: %s: Type-Check: method '%s' expected type %s got %s\n" expr.loc mname ft (string_of_type at); exit 1 
+            Error.checker expr.loc "method %s expected type %s got %s" mname ft (string_of_type at)
           );
 				) args sign.formals;
 				if sign.ret = "SELF_TYPE" then SELF_TYPE recv_cls else Class sign.ret)
@@ -209,15 +203,15 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 			in
 			(match lookup_method_sig rc mname with
 			| None ->
-				Printf.printf "ERROR: %s: Type-Check: unknown method %s on %s\n" mloc mname rc; exit 1
+        Error.checker mloc "unknown method %s on %s" mname rc
 			| Some sign ->
 				if List.length sign.formals <> List.length args then (
-          Printf.printf "ERROR: %s: Type-Check: method '%s' expected %d arguments, but %d was given\n" expr.loc mname (List.length sign.formals) (List.length args); exit 1
+          Error.checker expr.loc "method %s expected %d arguments, but %d was given" mname (List.length sign.formals) (List.length args)
         );
 				List.iter2 (fun a ft ->
 					let at = type_check current_class o a in
 					if not (is_subtype at (Class ft)) then (
-            Printf.printf "ERROR: %s: Type-Check: method '%s' expected type %s got %s\n" expr.loc mname ft (string_of_type at); exit 1 
+            Error.checker expr.loc "method %s expected type %s got %s" mname ft (string_of_type at)
           );  
 				) args sign.formals;
 				(match sign.ret with
@@ -229,29 +223,27 @@ let rec type_check (current_class : string) (o : object_env) (expr : expr) : sta
 		| StaticDispatch (recv, (tl, tname), (mloc, mname), args) ->
 			let rt = type_check current_class o recv in
       if tname = "SELF_TYPE" then (
-        Printf.printf "ERROR: %s: Type-Check: SELF_TYPE not allowed as static dispatch annotation\n" tl;
-        exit 1
+        Error.checker tl "SELF_TYPE not allowed as static dispatch annotation"
       );
       if not (class_exists tname) then (
-        Printf.printf "ERROR: %s: Type-Check: unknown type %s\n" tl tname;
-        exit 1
+        Error.checker tl "unknown type" tname
       );
 			let ann = tname in
 			(* receiver must be subtype of annotated type *)
 			if not (is_subtype rt (Class ann)) then (
-        Printf.printf "ERROR: %s: Type-Check: receiver type expected %s got %s\n" expr.loc ann (string_of_type rt); exit 1
+        Error.checker expr.loc "receiver type expected %s got %s" ann (string_of_type rt)
       );  
 			(match lookup_method_sig ann mname with
 			| None ->
-				Printf.printf "ERROR: %s: Type-Check: unknown method %s on %s\n" mloc mname ann; exit 1
+        Error.checker mloc "unknown method %s on %s" mname ann
 			| Some sign ->
 				if List.length sign.formals <> List.length args then (
-          Printf.printf "ERROR: %s: Type-Check: method '%s' expected %d arguments, but %d was given\n" expr.loc mname (List.length sign.formals) (List.length args); exit 1
+          Error.checker expr.loc "method %s expected %d arguments, but %d was given" mname (List.length sign.formals) (List.length args)
         );
 				List.iter2 (fun a ft ->
 					let at = type_check current_class o a in
 					if not (is_subtype at (Class ft)) then (
-            Printf.printf "ERROR: %s: Type-Check: method '%s' expected type %s got %s\n" expr.loc mname ft (string_of_type at); exit 1 
+            Error.checker expr.loc "method %s expected type %s got %s" mname ft (string_of_type at)
           );
 				) args sign.formals;
 				if sign.ret = "SELF_TYPE" then
@@ -288,7 +280,7 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
         (* type-check init and enforce conformance to declared type *)
         let it = type_check cname o e in
         let declared = if tname = "SELF_TYPE" then SELF_TYPE cname else Class tname in
-        if not (is_subtype it declared) then (Printf.printf "ERROR: %s: Type-Check: %s does not conform to %s in initialized attribute\n" aloc (string_of_type it) (string_of_type declared); exit 1))
+        if not (is_subtype it declared) then (Error.checker aloc "%s does not conform to %s in initialized attribute" (string_of_type it) (string_of_type declared)))
 
     | Method ((mloc, _mname), formals, (rtloc, rtype), body) ->
       let o = empty_object_env () in
@@ -307,8 +299,7 @@ let type_check_class (cname : string) ((_id, _), _inherits, features) =
       let bt = type_check cname o body in
       let declared = if rtype = "SELF_TYPE" then SELF_TYPE cname else Class rtype in
       if not (is_subtype bt declared) then (
-        Printf.printf "ERROR: %s: Type-Check: method body type does not conform to declared return\n" mloc;
-        exit 1
+        Error.checker mloc "method body type does not conform to declared return type"
       )
   ) features
 
