@@ -6,7 +6,7 @@
 OCAMLC = ocamlc
 BUILD = ../../build
 
-ML = codegen.ml
+ML = emit.ml gen.ml lower.ml codegen.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
 all: $(BUILD) $(CMO)

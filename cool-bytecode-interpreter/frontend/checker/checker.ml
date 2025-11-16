@@ -34,7 +34,9 @@ let check (ast : Ast.cool_program) =
 			builtins @ user_pairs
 		in
 		Hashtbl.clear parent_map;
-		List.iter (fun (c, p) -> Hashtbl.replace parent_map c p) parent_pairs;
+		List.iter (fun (c, p) -> 
+      Hashtbl.replace parent_map c p
+    ) parent_pairs;
 
     parent_validation ~all_classes ast;
     decl_types_validation ~all_classes ast;
@@ -48,12 +50,14 @@ let check (ast : Ast.cool_program) =
     seed_user_attributes ast;
     names_scoping_validation ast;
 
+    (* types ast *)
 		List.iter (fun ((_, cname), _inherits, features) ->
 			type_check_class cname ((("", cname)), None, features)
 		) ast;
 
     let env = Semantics.empty_env () in
 
+    (* class map *)
     Hashtbl.iter (fun cls attrs_tbl ->
       let attrs =
         Hashtbl.fold (fun name ty acc ->
@@ -71,6 +75,7 @@ let check (ast : Ast.cool_program) =
       Hashtbl.replace env.class_map cls attrs
     ) attribute_env;
 
+    (* implementation map *)
     Hashtbl.iter (fun cls methods_tbl ->
       let tbl = Hashtbl.create 31 in
       Hashtbl.iter (fun mname sig_ ->
@@ -92,9 +97,11 @@ let check (ast : Ast.cool_program) =
       Hashtbl.replace env.impl_map cls tbl
     ) method_env;
 
+    (* parent map *)
     Hashtbl.iter (fun c p ->
       Hashtbl.replace env.parent_map c p
     ) parent_map;
 
+    (* full semantic environment *)
     env
   );;

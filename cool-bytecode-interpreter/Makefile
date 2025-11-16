@@ -14,8 +14,8 @@ CHECKER = frontend/checker
 
 CODEGEN = backend/codegen
 
-CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml $(CORE)/semantics.ml
-CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo $(BUILD)/semantics.cmo 
+CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml $(CORE)/semantics.ml $(CORE)/bytecode.ml $(CORE)/ir.ml 
+CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo $(BUILD)/semantics.cmo $(BUILD)/bytecode.cmo $(BUILD)/ir.cmo
 
 MAIN = main.ml
 MAIN_CMO = $(BUILD)/main.cmo
@@ -26,12 +26,17 @@ OBJS = \
 	$(BUILD)/error.cmo \
   $(BUILD)/ast.cmo \
 	$(BUILD)/semantics.cmo \
+	$(BUILD)/bytecode.cmo \
+	$(BUILD)/ir.cmo \
   $(BUILD)/lexer.cmo \
   $(BUILD)/parser.cmo \
   $(BUILD)/env.cmo \
   $(BUILD)/validate.cmo \
   $(BUILD)/typecheck.cmo \
   $(BUILD)/checker.cmo \
+	$(BUILD)/emit.cmo \
+	$(BUILD)/gen.cmo \
+	$(BUILD)/lower.cmo \
 	$(BUILD)/codegen.cmo \
   $(BUILD)/main.cmo
 

@@ -39,7 +39,8 @@ let () =
     try Codegen.emit semantic_env
     with
     | Error.E e -> Error.print e; exit 1
-  in 
+    | _ -> Printf.printf "error\n"; exit 1
+  in
 
   (* vm *)
   ()

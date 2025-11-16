@@ -46,8 +46,8 @@ type operand =
   | OffestArg of int
 
 type instruction = {
-  op : opcode
-  arg: operand
+  op : opcode;
+  arg: operand;
 }
 
 type program = instruction array
