@@ -4,7 +4,7 @@
 # Lexer build
 
 OCAMLLEX = ocamllex
-OCAMLC   = ocamlc
+OCAMLC   = ocamlc -g
 BUILD = ../../build
 
 MAIN_MLL = lexer.mll

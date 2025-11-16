@@ -4,7 +4,7 @@
 # Compile instructions
 
 OCAMLYACC = ocamlyacc
-OCAMLC    = ocamlc
+OCAMLC    = ocamlc -g
 BUILD     = ../../build
 
 PARSER_MLY = parser.mly

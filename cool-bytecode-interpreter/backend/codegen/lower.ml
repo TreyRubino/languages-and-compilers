@@ -18,7 +18,6 @@ let lower_class st env cname attrs methods =
   let attrs_arr =
     Array.mapi (fun i a -> lower_attr a i) (Array.of_list attrs)
   in
-
   let disp =
     Array.of_list (List.map (fun (mname, impl) -> 0) methods)
   in
@@ -35,119 +34,95 @@ let rec lower_expr st buf env cname (expr : Ast.expr) =
   | Integer s ->
       let n = int_of_string s in
       emit_op_i buf OP_CONST n
-
   | String s ->
       let id = Gen.add_const st (Ir.LString s) in
       emit_op_i buf OP_CONST id
-
   | True ->
       emit_op buf OP_TRUE
-
   | False ->
       emit_op buf OP_FALSE
-
   | Isvoid e ->
       lower_expr st buf env cname e;
       emit_op buf OP_ISVOID
-
-  | Identifier (_, name) ->
-      (* locals are looked up by offset; for now assume offset=0 *)
-      (* later we maintain a local environment *)
+  | Identifier (_, _) ->
       emit_op_i buf OP_GET_LOCAL 0
-
-  | Assign ((_, name), rhs) ->
+  | Assign ((_, _), rhs) ->
       lower_expr st buf env cname rhs;
-      (* store into local offset 0 for now *)
       emit_op_i buf OP_SET_LOCAL 0
-
   | Tilde e ->
       lower_expr st buf env cname e;
       emit_op buf OP_NEG
-
   | Not e ->
       lower_expr st buf env cname e;
       emit_op buf OP_NOT
-
   | Plus (l, r) ->
-      lower_binary st buf env cname l r OP_ADD
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_ADD
   | Minus (l, r) ->
-      lower_binary st buf env cname l r OP_SUB
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_SUB
   | Times (l, r) ->
-      lower_binary st buf env cname l r OP_MUL
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_MUL
   | Divide (l, r) ->
-      lower_binary st buf env cname l r OP_DIV
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_DIV
   | Lt (l, r) ->
-      lower_binary st buf env cname l r OP_LESS
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_LESS
   | Le (l, r) ->
-      lower_binary st buf env cname l r OP_LESS_EQUAL
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_LESS_EQUAL
   | Equals (l, r) ->
-      lower_binary st buf env cname l r OP_EQUAL
-
+      lower_expr st buf env cname l;
+      lower_expr st buf env cname r;
+      emit_op buf OP_EQUAL
   | Block exprs ->
       List.iter (fun e -> lower_expr st buf env cname e) exprs
-
-  | If (pred, then_e, else_e) ->
+  | If (pred, t, e) ->
       lower_expr st buf env cname pred;
-      let j_false = mark buf in
+      let jf = mark buf in
       emit_op_i buf OP_JUMP_IF_FALSE 0;
-      lower_expr st buf env cname then_e;
-      let j_end = mark buf in
+      lower_expr st buf env cname t;
+      let je = mark buf in
       emit_op_i buf OP_JUMP 0;
-      patch buf j_false (OP_JUMP_IF_FALSE) (OffestArg (mark buf - j_false));
-      lower_expr st buf env cname else_e;
-      patch buf j_end OP_JUMP (OffestArg (mark buf - j_end))
-
+      patch buf jf OP_JUMP_IF_FALSE (OffestArg (mark buf - jf));
+      lower_expr st buf env cname e;
+      patch buf je OP_JUMP (OffestArg (mark buf - je))
   | While (pred, body) ->
       let top = mark buf in
       lower_expr st buf env cname pred;
-      let j_false = mark buf in
+      let jf = mark buf in
       emit_op_i buf OP_JUMP_IF_FALSE 0;
       lower_expr st buf env cname body;
       emit_op_i buf OP_LOOP (top - mark buf);
-      patch buf j_false OP_JUMP_IF_FALSE (OffestArg (mark buf - j_false))
-
+      patch buf jf OP_JUMP_IF_FALSE (OffestArg (mark buf - jf))
   | Let _ ->
       failwith "TODO: implement Let lowering"
-
   | Case _ ->
       failwith "TODO: implement Case lowering"
-
-  | DynamicDispatch (recv, (_, mname), args) ->
-      (* receiver *)
+  | DynamicDispatch (recv, (_, _), args) ->
       lower_expr st buf env cname recv;
-
-      (* args in order *)
       List.iter (fun a -> lower_expr st buf env cname a) args;
-
-      (* later we add OP_PREPARE_CALL *)
       emit_op_i buf OP_DISPATCH 0
-
-  | StaticDispatch (recv, (_, ty), (_, mname), args) ->
+  | StaticDispatch (recv, (_, _), (_, _), args) ->
       lower_expr st buf env cname recv;
       List.iter (fun a -> lower_expr st buf env cname a) args;
       emit_op_i buf OP_STATIC_DISPATCH 0
-
-  | SelfDispatch ((_, mname), args) ->
+  | SelfDispatch ((_, _), args) ->
       emit_op buf OP_GET_SELF;
       List.iter (fun a -> lower_expr st buf env cname a) args;
       emit_op_i buf OP_DISPATCH 0
-
-  | New (_, class_name) ->
+  | New (_, _) ->
       emit_op_i buf OP_NEW 0
-
   | _ ->
       emit_op buf OP_VOID
-
-and lower_binary st buf env cname l r op =
-  lower_expr st buf env cname l;
-  lower_expr st buf env cname r;
-  emit_op buf op
 
 let lower_method st env cname mname impl =
   let buf = Emit.create () in
@@ -190,10 +165,13 @@ let lower_class_group st env cname =
 
 let lower env =
   let st = Gen.create () in
-  Hashtbl.iter (fun cname _ ->
-    Hashtbl.replace st.class_ids cname (List.length !(st.classes))
-  ) env.class_map;
-  Hashtbl.iter (fun cname _ ->
+  let class_names =
+    List.sort compare (Hashtbl.fold (fun c _ acc -> c :: acc) env.class_map [])
+  in
+  List.iteri (fun i cname ->
+    Hashtbl.replace st.class_ids cname i
+  ) class_names;
+  List.iter (fun cname ->
     lower_class_group st env cname
-  ) env.class_map;
+  ) class_names;
   Gen.to_ir st

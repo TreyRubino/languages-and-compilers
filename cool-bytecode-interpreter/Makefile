@@ -3,7 +3,7 @@
 # Dr. Schwesinger
 # Lexer build
 
-OCAMLC = ocamlc
+OCAMLC = ocamlc -g
 BUILD  = build
 
 CORE    = core

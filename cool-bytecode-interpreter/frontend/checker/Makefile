@@ -2,7 +2,7 @@
 # CPSC 372 Independent study
 # Dr. Schwesinger
 
-OCAMLC = ocamlc
+OCAMLC = ocamlc -g
 BUILD  = ../../build
 
 ML  = env.ml typecheck.ml validate.ml checker.ml

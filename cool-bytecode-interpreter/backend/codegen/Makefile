@@ -3,7 +3,7 @@
 # Dr. Schwesinger
 # Codegen build
 
-OCAMLC = ocamlc
+OCAMLC = ocamlc -g
 BUILD = ../../build
 
 ML = emit.ml gen.ml lower.ml codegen.ml
