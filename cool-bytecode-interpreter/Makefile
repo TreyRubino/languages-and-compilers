@@ -36,6 +36,7 @@ OBJS = \
   $(BUILD)/checker.cmo \
 	$(BUILD)/emit.cmo \
 	$(BUILD)/gen.cmo \
+	$(BUILD)/layout.cmo \
 	$(BUILD)/lower.cmo \
 	$(BUILD)/codegen.cmo \
   $(BUILD)/main.cmo

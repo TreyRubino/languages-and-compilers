@@ -84,31 +84,31 @@ let check (ast : Ast.cool_program) =
       let rec gather c =
         match Hashtbl.find_opt method_env c with
         | Some defs ->
-            Hashtbl.iter (fun mname sig_ ->
-              if not (Hashtbl.mem tbl mname) then
-                let body =
-                  match List.find_opt (function
-                    | Method ((_loc, n), _, _, _) when n = mname -> true
-                    | _ -> false
-                  ) (List.concat (List.map (fun ((_, c2), _, f) -> if c2 = c then f else []) ast))
-                  with
-                  | Some (Method (_, _, _, b)) -> User b
-                  | _ -> Internal { rtype = sig_.ret; qname = c ^ "." ^ mname }
-                in
-                let impl = {
-                  definer = sig_.definer;
-                  formals = sig_.formals;
-                  body;
-                } in
-                Hashtbl.replace tbl mname impl
-            ) defs;
-            (match Hashtbl.find_opt parent_map c with
-             | Some p when p <> c -> gather p
-             | _ -> ())
-        | None ->
-            match Hashtbl.find_opt parent_map c with
+          Hashtbl.iter (fun mname sig_ ->
+            if not (Hashtbl.mem tbl mname) then
+              let body =
+                match List.find_opt (function
+                  | Method ((_loc, n), _, _, _) when n = mname -> true
+                  | _ -> false
+                ) (List.concat (List.map (fun ((_, c2), _, f) -> if c2 = c then f else []) ast))
+                with
+                | Some (Method (_, _, _, b)) -> User b
+                | _ -> Internal { rtype = sig_.ret; qname = c ^ "." ^ mname }
+              in
+              let impl = {
+                definer = sig_.definer;
+                formals = sig_.formals;
+                body;
+              } in
+              Hashtbl.replace tbl mname impl
+          ) defs;
+          (match Hashtbl.find_opt parent_map c with
             | Some p when p <> c -> gather p
-            | _ -> ()
+            | _ -> ())
+        | None ->
+          match Hashtbl.find_opt parent_map c with
+          | Some p when p <> c -> gather p
+          | _ -> ()
       in
       gather cname;
       Hashtbl.replace env.impl_map cname tbl

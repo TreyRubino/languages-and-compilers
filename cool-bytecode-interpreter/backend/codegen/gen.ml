@@ -38,7 +38,7 @@ let to_ir st =
     consts;
     classes;
     methods;
-    entry_method = 0;  (* temporary *)
+    entry_method = 0;
   }
 
 
