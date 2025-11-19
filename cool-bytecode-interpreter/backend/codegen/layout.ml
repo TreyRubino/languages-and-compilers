@@ -31,3 +31,28 @@ let linear_methods (env : Semantics.semantic_env) (cls : string) : (string * Sem
     | Some tbl ->
       Hashtbl.fold (fun m impl acc -> (m, impl) :: acc) tbl [])
   |> List.concat
+
+
+type frame_layout = {
+  slot_env    : (string, int) Hashtbl.t;
+  next_slot   : int ref;
+  local_count : int ref;
+}
+
+let create_frame_layout (formals : (Ast.id * Ast.cool_type) list) : frame_layout =
+  let env = Hashtbl.create 16 in
+  List.iteri (fun i ((_, name), _) ->
+    Hashtbl.add env name i
+  ) formals;
+  { 
+    slot_env = env;
+    next_slot = ref (List.length formals);
+    local_count = ref 0;
+  }
+
+let allocate_local (fl : frame_layout) (name : string) : int =
+  let slot = !(fl.next_slot) in
+  Hashtbl.add fl.slot_env name slot;
+  incr fl.next_slot;
+  incr fl.local_count;
+  slot

@@ -5,7 +5,7 @@
 
 type t = {
   phase : string;
-  line  : int;
+  line  : string;
   msg   : string
 }
 
@@ -17,14 +17,14 @@ let raisef ~phase ~line fmt =
   ) fmt
 
 let print { phase; line; msg } = 
-  Printf.printf "ERROR: %d: %s: %s\n" line phase msg
+  Printf.printf "ERROR: %s: %s: %s\n" line phase msg
 
 let lexer lexbuf fmt = 
-  let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
+  let line = string_of_int lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
   raisef ~phase:"Lexer" ~line fmt
 
 let parser lexbuf = 
-  let line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
+  let line = string_of_int lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum in
   let lexeme = Lexing.lexeme lexbuf in
   print {
     phase = "Parser";
@@ -33,11 +33,7 @@ let parser lexbuf =
   }
 
 let checker loc fmt =
-  let line =
-    try int_of_string loc
-    with _ -> 0
-  in
-  raisef ~phase:"Type-Check" ~line fmt
+  raisef ~phase:"Type-Check" ~line:loc fmt
 
 let codegen loc fmt =
   raisef ~phase:"Codegen" ~line:loc fmt
