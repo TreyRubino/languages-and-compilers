@@ -17,7 +17,7 @@ type method_body =
 
 type method_impl = {
   definer : string;
-  formals : string list;
+  formals : (id * cool_type) list;
   body    : method_body;
 }
 

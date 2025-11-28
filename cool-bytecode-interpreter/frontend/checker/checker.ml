@@ -54,6 +54,26 @@ let check (ast : Ast.cool_program) =
 
     let env = Semantics.empty_env () in
 
+    let rec find_typed_formals cname mname =
+      let features =
+        List.concat (
+          List.map
+            (fun ((_, c2), _, fs) -> if c2 = cname then fs else [])
+            ast
+        )
+      in
+      match List.find_opt
+        (function Method ((_, n), _, _, _) when n = mname -> true | _ -> false)
+        features
+      with
+      | Some (Method (_, formals_ast, _, _)) ->
+        formals_ast
+      | _ ->
+        match Hashtbl.find_opt parent_map cname with
+        | Some p when p <> cname -> find_typed_formals p mname
+        | _ -> []
+    in
+
     (* class map *)
     List.iter (fun cname ->
       let attrs_tbl =
@@ -95,9 +115,10 @@ let check (ast : Ast.cool_program) =
                 | Some (Method (_, _, _, b)) -> User b
                 | _ -> Internal { rtype = sig_.ret; qname = c ^ "." ^ mname }
               in
+              let typed_formals = find_typed_formals sig_.definer mname in 
               let impl = {
                 definer = sig_.definer;
-                formals = sig_.formals;
+                formals = typed_formals;
                 body;
               } in
               Hashtbl.replace tbl mname impl
