@@ -57,21 +57,43 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     emit_op ctx.buf OP_FALSE
 
   | Identifier ((vloc, vname)) ->
-    let slot = 
-      try Hashtbl.find ctx.frame.slot_env vname
-      with Not_found -> Error.codegen vloc "unknown local %s" vname
-    in
-    emit_op_i ctx.buf OP_GET_LOCAL slot
-
+    if vname = "self" then (
+      emit_op ctx.buf OP_GET_SELF
+    ) else (
+      match Hashtbl.find_opt ctx.frame.slot_env vname with
+      | Some slot -> 
+        emit_op_i ctx.buf OP_GET_LOCAL slot
+      | None -> 
+        let attrs = linear_attrs ctx.env ctx.cname in
+        let rec find i = function
+        | [] -> Error.codegen vloc "unknown identifier %s" vname
+        | a :: tl -> 
+          if a.aname = vname then i else find (i+1) tl
+        in
+        let offset = find 0 attrs in
+        emit_op_i ctx.buf OP_GET_ATTR offset
+    )
+    
   | Assign ((aloc, aname), rhs) ->
-    let slot = 
-      try Hashtbl.find ctx.frame.slot_env aname
-      with Not_found -> Error.codegen aloc "unknown local %s" aname
-    in
-    lower_expr ctx rhs;
-    emit_op_i ctx.buf OP_SET_LOCAL slot
+    if aname = "self" then (
+      Error.codegen aloc "cannot assign to self"
+    ) else(
+      lower_expr ctx rhs;
+      match Hashtbl.find_opt ctx.frame.slot_env aname with
+      | Some slot -> 
+        emit_op_i ctx.buf OP_SET_LOCAL slot
+      | None -> 
+        let attrs = linear_attrs ctx.env ctx.cname in
+        let rec find i = function
+        | [] -> Error.codegen aloc "unknown identifier %s" aname
+        | a :: tl ->
+          if a.aname = aname then i else find (i+1) tl
+        in
+        let offset = find 0 attrs in
+        emit_op_i ctx.buf OP_SET_ATTR offset
+    )
 
-  | Plus (l, r) ->
+    | Plus (l, r) ->
     lower_expr ctx l;
     lower_expr ctx r;
     emit_op ctx.buf OP_ADD
@@ -192,10 +214,19 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     in
     emit_op_i ctx.buf OP_DISPATCH slot
 
-  | StaticDispatch (recv, (_, _), (_, _), args) ->
+  | StaticDispatch (recv, (cloc, cname), (mloc, mname), args) ->
     lower_expr ctx recv;
     List.iter (fun a -> lower_expr ctx a) args;
-    emit_op_i ctx.buf OP_STATIC_DISPATCH 0
+    let meths = linear_methods ctx.env cname in
+    let slot =
+      let rec find i = function
+      | [] -> Error.codegen mloc "method %s not found" mname
+      | (name, _) :: tl ->
+        if name = mname then i else find (i+1) tl
+      in
+      find 0 meths
+    in
+    emit_op_i ctx.buf OP_STATIC_DISPATCH slot
 
   | Block exprs ->
     let fl_child = {

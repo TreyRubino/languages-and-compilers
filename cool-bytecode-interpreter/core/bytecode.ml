@@ -42,7 +42,6 @@ type opcode =
 type operand = 
   | NoArg
   | IntArg of int
-  | IndexArg of int
   | OffestArg of int
 
 type instruction = {
