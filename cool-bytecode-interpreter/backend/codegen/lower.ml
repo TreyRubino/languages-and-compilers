@@ -73,7 +73,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
         let offset = find 0 attrs in
         emit_op_i ctx.buf OP_GET_ATTR offset
     )
-    
+
   | Assign ((aloc, aname), rhs) ->
     if aname = "self" then (
       Error.codegen aloc "cannot assign to self"
@@ -93,7 +93,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
         emit_op_i ctx.buf OP_SET_ATTR offset
     )
 
-    | Plus (l, r) ->
+  | Plus (l, r) ->
     lower_expr ctx l;
     lower_expr ctx r;
     emit_op ctx.buf OP_ADD
@@ -183,12 +183,15 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     failwith "TODO: implement Case lowering"
 
   | New ((cloc, cname)) ->
-    let cid = 
-      try Hashtbl.find ctx.st.class_ids cname
-      with Not_found -> Error.codegen cloc "unknown class %s" cname
-    in
-    emit_op_i ctx.buf OP_NEW cid
-
+    (match cname with
+    |"SELF_TYPE" -> emit_op ctx.buf OP_NEW_SELF_TYPE
+    | _ -> 
+      let cid = 
+        try Hashtbl.find ctx.st.class_ids cname
+        with Not_found -> Error.codegen cloc "unknown class %s" cname
+      in
+      emit_op_i ctx.buf OP_NEW cid)
+      
   | SelfDispatch ((_, _), args) ->
     emit_op ctx.buf OP_GET_SELF;
     List.iter (fun a -> lower_expr ctx a) args;

@@ -30,7 +30,6 @@ type opcode =
   | OP_LESS
   | OP_LESS_EQUAL
   | OP_ISVOID
-  | OP_CALL
   | OP_DISPATCH
   | OP_STATIC_DISPATCH
   | OP_RETURN
