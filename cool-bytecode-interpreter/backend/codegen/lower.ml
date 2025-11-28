@@ -172,10 +172,25 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     List.iter (fun a -> lower_expr ctx a) args;
     emit_op_i ctx.buf OP_DISPATCH 0
 
-  | DynamicDispatch (recv, (_, _), args) ->
+  | DynamicDispatch (recv, (mloc, mname), args) ->
     lower_expr ctx recv;
     List.iter (fun a -> lower_expr ctx a) args;
-    emit_op_i ctx.buf OP_DISPATCH 0
+    let cname =
+      match recv.static_type with
+      | Some (Class c) -> c
+      | Some (SELF_TYPE c) -> c
+      | _ -> Error.codegen recv.loc "receiver has no static type"
+    in
+    let meths = linear_methods ctx.env cname in
+    let slot =
+      let rec find i = function
+      | [] -> Error.codegen mloc "method %s not found" mname
+      | (name, _) :: tl ->
+        if name = mname then i else find (i+1) tl
+      in
+      find 0 meths
+    in
+    emit_op_i ctx.buf OP_DISPATCH slot
 
   | StaticDispatch (recv, (_, _), (_, _), args) ->
     lower_expr ctx recv;
@@ -230,6 +245,8 @@ let lower_class_group st env cname =
   in
   Gen.add_class st class_info;
   List.iter (fun (mname, impl) ->
-    let mi = lower_method st env cname mname impl in
-    Gen.add_method st mi
+    if impl.definer = cname then (
+      let mi = lower_method st env cname mname impl in
+      Gen.add_method st mi
+    )
   ) meths

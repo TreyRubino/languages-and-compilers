@@ -32,7 +32,6 @@ let linear_methods (env : Semantics.semantic_env) (cls : string) : (string * Sem
       Hashtbl.fold (fun m impl acc -> (m, impl) :: acc) tbl [])
   |> List.concat
 
-
 type frame_layout = {
   slot_env    : (string, int) Hashtbl.t;
   next_slot   : int ref;
