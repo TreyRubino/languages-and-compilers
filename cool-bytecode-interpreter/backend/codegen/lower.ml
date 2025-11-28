@@ -144,15 +144,18 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
       next_slot = ctx.frame.next_slot;
       local_count = ctx.frame.local_count;
     } in 
+    let ctx_child = {
+      ctx with frame = fl_child
+    } in 
     List.iter (fun ((vloc, vname), _, init_opt) ->
       let slot = Layout.allocate_local fl_child vname in
       match init_opt with
       | None -> ()
       | Some e -> 
-        lower_expr ctx e;
+        lower_expr ctx_child e;
         emit_op_i ctx.buf OP_SET_LOCAL slot
     ) bindings;
-    lower_expr ctx body
+    lower_expr ctx_child body
 
   | Case _ ->
     failwith "TODO: implement Case lowering"
@@ -176,7 +179,15 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     emit_op_i ctx.buf OP_STATIC_DISPATCH 0
 
   | Block exprs ->
-    List.iter (fun e -> lower_expr ctx e) exprs
+    let fl_child = {
+      slot_env = Hashtbl.copy ctx.frame.slot_env;
+      next_slot = ctx.frame.next_slot;
+      local_count = ctx.frame.local_count;
+    } in
+    let ctx_child = {
+      ctx with frame = fl_child
+    } in
+    List.iter (fun e -> lower_expr ctx_child e) exprs
 
 let lower_method st env cname mname impl =
   let buf = Emit.create () in
