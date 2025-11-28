@@ -160,8 +160,12 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
   | Case _ ->
     failwith "TODO: implement Case lowering"
 
-  | New (_, _) ->
-    emit_op_i ctx.buf OP_NEW 0
+  | New ((cloc, cname)) ->
+    let cid = 
+      try Hashtbl.find ctx.st.class_ids cname
+      with Not_found -> Error.codegen cloc "unknown class %s" cname
+    in
+    emit_op_i ctx.buf OP_NEW cid
 
   | SelfDispatch ((_, _), args) ->
     emit_op ctx.buf OP_GET_SELF;
