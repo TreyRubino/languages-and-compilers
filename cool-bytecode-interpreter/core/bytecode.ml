@@ -16,7 +16,7 @@ type opcode =
   | OP_SET_ATTR
   | OP_NEW
   | OP_NEW_SELF_TYPE
-  | OP_INIT_ATTR
+  | OP_CALL
   | OP_JUMP
   | OP_JUMP_IF_FALSE
   | OP_LOOP
