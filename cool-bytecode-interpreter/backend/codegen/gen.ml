@@ -43,15 +43,15 @@ let set_method st id m =
 let add_class st c =
   st.classes := !(st.classes) @ [c]
 
-let to_ir st =
+let to_ir st entry_id =
   let consts  = Array.of_list !(st.consts) in
   let classes = Array.of_list !(st.classes) in
   let methods = Array.of_list !(st.methods) in
   {
-    consts;
+    Ir.consts;
     classes;
     methods;
-    entry_method = 0;
+    entry_method = entry_id;
   }
 
 

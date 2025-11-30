@@ -38,6 +38,7 @@ OBJS = \
 	$(BUILD)/gen.cmo \
 	$(BUILD)/layout.cmo \
 	$(BUILD)/lower.cmo \
+	$(BUILD)/debug.cmo \
 	$(BUILD)/codegen.cmo \
   $(BUILD)/main.cmo
 

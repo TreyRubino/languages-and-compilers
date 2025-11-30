@@ -33,15 +33,12 @@ type opcode =
   | OP_DISPATCH
   | OP_STATIC_DISPATCH
   | OP_RETURN
-  | OP_CASE_INIT
-  | OP_CASE_BRANCH
-  | OP_CASE_END
   | OP_NOP
 
 type operand = 
   | NoArg
   | IntArg of int
-  | OffestArg of int
+  | OffsetArg of int
 
 type instruction = {
   op : opcode;

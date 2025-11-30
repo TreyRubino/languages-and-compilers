@@ -28,5 +28,5 @@ let patch buf idx op arg =
   in
   buf.code <- upd 0 buf.code
   
-  let to_program buf = 
-    Array.of_list buf.code
+let to_program buf = 
+  Array.of_list buf.code

@@ -1,0 +1,95 @@
+(*
+   @author Trey Rubino
+   @date 11/17/2025
+*)
+
+open Printf
+open Bytecode
+
+let string_of_opcode = function
+  | Bytecode.OP_POP -> "POP"
+  | OP_CONST -> "CONST"
+  | OP_TRUE -> "TRUE"
+  | OP_FALSE -> "FALSE"
+  | OP_VOID -> "VOID"
+  | OP_GET_LOCAL -> "GET_LOCAL"
+  | OP_SET_LOCAL -> "SET_LOCAL"
+  | OP_GET_SELF -> "GET_SELF"
+  | OP_GET_ATTR -> "GET_ATTR"
+  | OP_SET_ATTR -> "SET_ATTR"
+  | OP_NEW -> "NEW"
+  | OP_NEW_SELF_TYPE -> "NEW_SELF_TYPE"
+  | OP_CALL -> "CALL"
+  | OP_JUMP -> "JUMP"
+  | OP_JUMP_IF_FALSE -> "JUMP_IF_FALSE"
+  | OP_LOOP -> "LOOP"
+  | OP_ADD -> "ADD"
+  | OP_SUB -> "SUB"
+  | OP_MUL -> "MUL"
+  | OP_DIV -> "DIV"
+  | OP_NEG -> "NEG"
+  | OP_NOT -> "NOT"
+  | OP_EQUAL -> "EQUAL"
+  | OP_LESS -> "LESS"
+  | OP_LESS_EQUAL -> "LESS_EQUAL"
+  | OP_ISVOID -> "ISVOID"
+  | OP_DISPATCH -> "DISPATCH"
+  | OP_STATIC_DISPATCH -> "STATIC_DISPATCH"
+  | OP_RETURN -> "RETURN"
+  | OP_NOP -> "NOP"
+
+let string_of_operand = function
+  | Bytecode.NoArg -> ""
+  | IntArg n -> sprintf " %d" n
+  | OffsetArg o -> sprintf " %d" o
+
+let dump_ir (filename : string) (ir : Ir.ir) : unit =
+  let oc = open_out filename in
+
+  let pf fmt = fprintf oc fmt in
+
+  pf "\n--- IR.consts ---\n%!";
+  Array.iteri (fun i c ->
+    match c with
+    | Ir.LInt n    -> pf "%d: int %d\n%!" i n
+    | Ir.LBool b   -> pf "%d: bool %b\n%!" i b
+    | Ir.LString s -> pf "%d: string \"%s\"\n%!" i s
+    | Ir.LVoid     -> pf "%d: void\n%!" i
+  ) ir.consts;
+
+  pf "\n--- IR.classes ---\n%!";
+  Array.iter (fun (cls : Ir.class_info) ->
+    pf "class %s (id=%d parent=%d)\n%!" cls.name cls.id cls.parent_id;
+    Array.iter (fun (a : Ir.attr_info) ->
+      pf "  attr %s @%d\n%!" a.name a.offset
+    ) cls.attributes;
+    pf "  dispatch size=%d\n%!" (Array.length cls.dispatch)
+  ) ir.classes;
+
+  pf "\n--- IR.methods ---\n%!";
+
+  Array.iteri (fun i (m : Ir.method_info) ->
+    pf "method[%d] %s (class=%d formals=%d locals=%d)\n%!"
+      i m.name m.class_id m.n_formals m.n_locals;
+
+    pf "  code size=%d\n%!" (Array.length m.code);
+
+    Array.iteri (fun pc instr ->
+      let arg_ctor =
+        match instr.arg with
+        | NoArg -> "NoArg()"
+        | IntArg n -> Printf.sprintf "IntArg(%d)" n
+        | OffsetArg o -> Printf.sprintf "OffsetArg(%d)" o
+      in
+      pf "    %04d: %s %s\n%!"
+        pc
+        (string_of_opcode instr.op)
+        arg_ctor
+    ) m.code;
+  ) ir.methods;
+
+  (* entry point *)
+  pf "\nentry_method=%d\n%!" ir.entry_method;
+  pf "\n--- end IR dump ---\n%!";
+
+  close_out oc

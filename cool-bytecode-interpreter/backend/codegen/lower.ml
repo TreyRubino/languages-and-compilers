@@ -11,6 +11,10 @@ open Bytecode
 open Layout
 open Error
 
+(* 
+passing as a struct to each iteration of
+recursive eval so I am not passing 5+ params
+*)
 type lower_ctx = {
   st    : Gen.t;
   buf   : Emit.t;
@@ -18,6 +22,24 @@ type lower_ctx = {
   cname : string;
   frame : Layout.frame_layout;
 }
+
+let rec linear_tags (ctx : lower_ctx)  (cname : string) =
+  let tag = Hashtbl.find ctx.st.class_ids cname in
+  let parent = 
+    try Hashtbl.find ctx.env.parent_map cname
+    with Not_found -> "Object"
+  in
+  if parent = cname then [tag]
+  else tag :: linear_tags ctx parent
+
+let rec depth env cname = 
+  if cname = "Object" then 0 
+  else 
+    let parent = 
+      try Hashtbl.find env.parent_map cname
+      with Not_found -> "Object"
+    in
+    1 + depth env parent
 
 let lower_attr a offset =
   { name = a.aname; offset }
@@ -48,208 +70,278 @@ let lower_class st env cname attrs methods =
 let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
   match expr.expr_kind with
   | Integer s ->
-      let n = int_of_string s in
-      emit_op_i ctx.buf OP_CONST n
+    let n = int_of_string s in
+    emit_op_i ctx.buf OP_CONST n
 
   | String s ->
-      let id = Gen.add_const ctx.st (Ir.LString s) in
-      emit_op_i ctx.buf OP_CONST id
+    let id = Gen.add_const ctx.st (Ir.LString s) in
+    emit_op_i ctx.buf OP_CONST id
 
   | True ->
-      emit_op ctx.buf OP_TRUE
+    emit_op ctx.buf OP_TRUE
 
   | False ->
-      emit_op ctx.buf OP_FALSE
+    emit_op ctx.buf OP_FALSE
 
   | Identifier ((vloc, vname)) ->
-      if vname = "self" then (
-        emit_op ctx.buf OP_GET_SELF
-      ) else (
-        match Hashtbl.find_opt ctx.frame.slot_env vname with
-        | Some slot ->
-            emit_op_i ctx.buf OP_GET_LOCAL slot
-        | None ->
-            let attrs = linear_attrs ctx.env ctx.cname in
-            let rec find i = function
-              | [] -> Error.codegen vloc "unknown identifier %s" vname
-              | a :: tl -> if a.aname = vname then i else find (i + 1) tl
-            in
-            let offset = find 0 attrs in
-            emit_op_i ctx.buf OP_GET_ATTR offset
-      )
+    if vname = "self" then (
+      emit_op ctx.buf OP_GET_SELF
+    ) else (
+      match Hashtbl.find_opt ctx.frame.slot_env vname with
+      | Some slot ->
+        emit_op_i ctx.buf OP_GET_LOCAL slot
+      | None ->
+        let attrs = linear_attrs ctx.env ctx.cname in
+        let rec find i = function
+          | [] -> Error.codegen vloc "unknown identifier %s" vname
+          | a :: tl -> if a.aname = vname then i else find (i + 1) tl
+        in
+        let offset = find 0 attrs in
+        emit_op_i ctx.buf OP_GET_ATTR offset
+    )
 
   | Assign ((aloc, aname), rhs) ->
-      if aname = "self" then (
-        Error.codegen aloc "cannot assign to self"
-      ) else (
-        lower_expr ctx rhs;
-        match Hashtbl.find_opt ctx.frame.slot_env aname with
-        | Some slot ->
-            emit_op_i ctx.buf OP_SET_LOCAL slot
-        | None ->
-            let attrs = linear_attrs ctx.env ctx.cname in
-            let rec find i = function
-              | [] -> Error.codegen aloc "unknown identifier %s" aname
-              | a :: tl -> if a.aname = aname then i else find (i + 1) tl
-            in
-            let offset = find 0 attrs in
-            emit_op_i ctx.buf OP_SET_ATTR offset
-      )
+    if aname = "self" then (
+      Error.codegen aloc "cannot assign to self"
+    ) else (
+      lower_expr ctx rhs;
+      match Hashtbl.find_opt ctx.frame.slot_env aname with
+      | Some slot ->
+        emit_op_i ctx.buf OP_SET_LOCAL slot
+      | None ->
+        let attrs = linear_attrs ctx.env ctx.cname in
+        let rec find i = function
+          | [] -> Error.codegen aloc "unknown identifier %s" aname
+          | a :: tl -> if a.aname = aname then i else find (i + 1) tl
+        in
+        let offset = find 0 attrs in
+        emit_op_i ctx.buf OP_SET_ATTR offset
+    )
 
   | Plus (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_ADD
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_ADD
 
   | Minus (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_SUB
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_SUB
 
   | Times (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_MUL
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_MUL
 
   | Divide (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_DIV
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_DIV
 
   | Tilde e ->
-      lower_expr ctx e;
-      emit_op ctx.buf OP_NEG
+    lower_expr ctx e;
+    emit_op ctx.buf OP_NEG
 
   | Lt (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_LESS
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_LESS
 
   | Le (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_LESS_EQUAL
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_LESS_EQUAL
 
   | Equals (l, r) ->
-      lower_expr ctx l;
-      lower_expr ctx r;
-      emit_op ctx.buf OP_EQUAL
+    lower_expr ctx l;
+    lower_expr ctx r;
+    emit_op ctx.buf OP_EQUAL
 
   | Not e ->
-      lower_expr ctx e;
-      emit_op ctx.buf OP_NOT
+    lower_expr ctx e;
+    emit_op ctx.buf OP_NOT
 
   | Isvoid e ->
-      lower_expr ctx e;
-      emit_op ctx.buf OP_ISVOID
+    lower_expr ctx e;
+    emit_op ctx.buf OP_ISVOID
 
   | If (pred, t, e) ->
-      lower_expr ctx pred;
-      let jf = mark ctx.buf in
-      emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
-      lower_expr ctx t;
-      let je = mark ctx.buf in
-      emit_op_i ctx.buf OP_JUMP 0;
-      patch ctx.buf jf OP_JUMP_IF_FALSE (OffestArg (mark ctx.buf - jf));
-      lower_expr ctx e;
-      patch ctx.buf je OP_JUMP (OffestArg (mark ctx.buf - je))
+    lower_expr ctx pred;
+    let jf = mark ctx.buf in
+    emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
+    lower_expr ctx t;
+    let je = mark ctx.buf in
+    emit_op_i ctx.buf OP_JUMP 0;
+    patch ctx.buf jf OP_JUMP_IF_FALSE (OffsetArg (mark ctx.buf - jf));
+    lower_expr ctx e;
+    patch ctx.buf je OP_JUMP (OffsetArg (mark ctx.buf - je))
 
   | While (pred, body) ->
-      let top = mark ctx.buf in
-      lower_expr ctx pred;
-      let jf = mark ctx.buf in
-      emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
-      lower_expr ctx body;
-      emit_op_i ctx.buf OP_LOOP (top - mark ctx.buf);
-      patch ctx.buf jf OP_JUMP_IF_FALSE (OffestArg (mark ctx.buf - jf))
+    let top = mark ctx.buf in
+    lower_expr ctx pred;
+    let jf = mark ctx.buf in
+    emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
+    lower_expr ctx body;
+    emit_op_i ctx.buf OP_LOOP (top - mark ctx.buf);
+    patch ctx.buf jf OP_JUMP_IF_FALSE (OffsetArg (mark ctx.buf - jf))
 
   | Let (bindings, body) ->
-      let fl_child = {
-        slot_env = Hashtbl.copy ctx.frame.slot_env;
-        next_slot = ctx.frame.next_slot;
-        local_count = ctx.frame.local_count;
-      } in
-      let ctx_child = { ctx with frame = fl_child } in
-      List.iter (fun ((_, vname), _, init_opt) ->
-        let slot = Layout.allocate_local fl_child vname in
-        match init_opt with
-        | None -> ()
-        | Some e ->
-            lower_expr ctx_child e;
-            emit_op_i ctx.buf OP_SET_LOCAL slot
-      ) bindings;
-      lower_expr ctx_child body
+    let fl_child = {
+      slot_env = Hashtbl.copy ctx.frame.slot_env;
+      next_slot = ctx.frame.next_slot;
+      local_count = ctx.frame.local_count;
+    } in
+    let ctx_child = { ctx with frame = fl_child } in
+    List.iter (fun ((_, vname), _, init_opt) ->
+      let slot = Layout.allocate_local fl_child vname in
+      match init_opt with
+      | None -> ()
+      | Some e ->
+          lower_expr ctx_child e;
+          emit_op_i ctx.buf OP_SET_LOCAL slot
+    ) bindings;
+    lower_expr ctx_child body
 
-  | Case _ ->
-      failwith "TODO: implement Case lowering"
+  | Case (scrut, branches) ->
+    (* eval scrut and store into a local frame slot *)
+    let s_slot = Layout.allocate_local ctx.frame "_scrut" in
+    lower_expr ctx scrut;
+    emit_op_i ctx.buf OP_SET_LOCAL s_slot;
 
+    (* check if local is NULL *)
+    emit_op_i ctx.buf OP_GET_LOCAL s_slot;
+    let j_void = mark ctx.buf in
+    emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
+
+    (* load dynamic class tag into a new local frame slot *)
+    let t_slot = Layout.allocate_local ctx.frame "_tag" in
+    emit_op_i ctx.buf OP_GET_LOCAL s_slot;
+    emit_op_i ctx.buf OP_GET_ATTR 0;
+    emit_op_i ctx.buf OP_SET_LOCAL t_slot;
+
+    (* sort the branches deepest first *)
+    let sorted = 
+      List.sort (fun ((_, _), (_, t1), _) ((_, _), (_, t2), _) -> 
+        compare (depth ctx.env t2) (depth ctx.env t1)
+      ) branches
+    in
+
+    (* test each branch and mark which one to jump to *)
+    let br_tests = 
+      List.map (fun ((vloc, vname), (_, tname), br) -> 
+        let chain = linear_tags ctx tname in
+        let j_test = mark ctx.buf in
+        (vname, br, chain, j_test) 
+      ) sorted
+    in
+
+    (* emit the subtype test for each branch *)
+    List.iter (fun (_vname, _br, chain, j_test) -> 
+      List.iter (fun ctag -> 
+        emit_op_i ctx.buf OP_GET_LOCAL t_slot;
+        emit_op_i ctx.buf OP_CONST ctag;
+        emit_op ctx.buf OP_EQUAL;
+
+        let j = mark ctx.buf in
+        emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
+        ignore j
+      ) chain;
+      ignore j_test
+    ) br_tests;
+
+    (* if no branch then jump to no match *)
+    let j_no = mark ctx.buf in
+    emit_op_i ctx.buf OP_JUMP 0;
+
+    let merged_jumps = ref [] in
+    List.iter (fun (vname, br, _chain, j_test) ->
+      patch ctx.buf j_test OP_JUMP_IF_FALSE (OffsetArg (mark ctx.buf - j_test));
+      let slot = Layout.allocate_local ctx.frame vname in 
+      emit_op_i ctx.buf OP_GET_LOCAL s_slot;
+      emit_op_i ctx.buf OP_SET_LOCAL slot;
+
+      lower_expr ctx br;
+
+      let j_end = mark ctx.buf in 
+      emit_op_i ctx.buf OP_JUMP 0;
+      merged_jumps := j_end :: !merged_jumps
+    ) br_tests;
+
+    let merge_pos = mark ctx.buf in
+    List.iter (fun j_end -> 
+      patch ctx.buf j_end OP_JUMP (OffsetArg (merge_pos - j_end))
+    ) !merged_jumps; 
+
+    patch ctx.buf j_void OP_JUMP_IF_FALSE (OffsetArg (merge_pos - j_void));
+    patch ctx.buf j_no OP_JUMP (OffsetArg (merge_pos - j_no))
+    
   | New ((cloc, cname)) ->
-      (match cname with
-      | "SELF_TYPE" ->
-        emit_op ctx.buf OP_NEW_SELF_TYPE;
-        let init_mid =
-          try Hashtbl.find ctx.st.init_ids ctx.cname
-          with Not_found -> Error.codegen cloc "missing init for class %s" ctx.cname
-        in
-        emit_op_i ctx.buf OP_CALL init_mid
-      | _ ->
-        let cid =
-          try Hashtbl.find ctx.st.class_ids cname
-          with Not_found -> Error.codegen cloc "unknown class %s" cname
-        in
-        emit_op_i ctx.buf OP_NEW cid;
-        let init_mid =
-          try Hashtbl.find ctx.st.init_ids cname
-          with Not_found -> Error.codegen cloc "missing init for class %s" cname
-        in
-        emit_op_i ctx.buf OP_CALL init_mid
-      )
+    (match cname with
+    | "SELF_TYPE" ->
+      emit_op ctx.buf OP_NEW_SELF_TYPE;
+      let construct_id =
+        try Hashtbl.find ctx.st.init_ids ctx.cname
+        with Not_found -> Error.codegen cloc "missing init for class %s" ctx.cname
+      in
+      emit_op_i ctx.buf OP_CALL construct_id
+    | _ ->
+      let cid =
+        try Hashtbl.find ctx.st.class_ids cname
+        with Not_found -> Error.codegen cloc "unknown class %s" cname
+      in
+      emit_op_i ctx.buf OP_NEW cid;
+      let construct_id =
+        try Hashtbl.find ctx.st.init_ids cname
+        with Not_found -> Error.codegen cloc "missing init for class %s" cname
+      in
+      emit_op_i ctx.buf OP_CALL construct_id
+    )
 
   | SelfDispatch ((_, _), args) ->
-      emit_op ctx.buf OP_GET_SELF;
-      List.iter (fun a -> lower_expr ctx a) args;
-      emit_op_i ctx.buf OP_DISPATCH 0
+    emit_op ctx.buf OP_GET_SELF;
+    List.iter (fun a -> lower_expr ctx a) args;
+    emit_op_i ctx.buf OP_DISPATCH 0
 
   | DynamicDispatch (recv, (mloc, mname), args) ->
-      lower_expr ctx recv;
-      List.iter (fun a -> lower_expr ctx a) args;
-      let cname =
-        match recv.static_type with
-        | Some (Class c) -> c
-        | Some (SELF_TYPE c) -> c
-        | _ -> Error.codegen recv.loc "receiver has no static type"
+    lower_expr ctx recv;
+    List.iter (fun a -> lower_expr ctx a) args;
+    let cname =
+      match recv.static_type with
+      | Some (Class c) -> c
+      | Some (SELF_TYPE c) -> c
+      | _ -> Error.codegen recv.loc "receiver has no static type"
+    in
+    let meths = linear_methods ctx.env cname in
+    let slot =
+      let rec find i = function
+        | [] -> Error.codegen mloc "method %s not found" mname
+        | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
       in
-      let meths = linear_methods ctx.env cname in
-      let slot =
-        let rec find i = function
-          | [] -> Error.codegen mloc "method %s not found" mname
-          | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
-        in
-        find 0 meths
-      in
-      emit_op_i ctx.buf OP_DISPATCH slot
+      find 0 meths
+    in
+    emit_op_i ctx.buf OP_DISPATCH slot
 
   | StaticDispatch (recv, (cloc, cname), (mloc, mname), args) ->
-      lower_expr ctx recv;
-      List.iter (fun a -> lower_expr ctx a) args;
-      let meths = linear_methods ctx.env cname in
-      let slot =
-        let rec find i = function
-          | [] -> Error.codegen mloc "method %s not found" mname
-          | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
-        in
-        find 0 meths
+    lower_expr ctx recv;
+    List.iter (fun a -> lower_expr ctx a) args;
+    let meths = linear_methods ctx.env cname in
+    let slot =
+      let rec find i = function
+        | [] -> Error.codegen mloc "method %s not found" mname
+        | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
       in
-      emit_op_i ctx.buf OP_STATIC_DISPATCH slot
+      find 0 meths
+    in
+    emit_op_i ctx.buf OP_STATIC_DISPATCH slot
 
   | Block exprs ->
-      let fl_child = {
-        slot_env = Hashtbl.copy ctx.frame.slot_env;
-        next_slot = ctx.frame.next_slot;
-        local_count = ctx.frame.local_count;
-      } in
-      let ctx_child = { ctx with frame = fl_child } in
-      List.iter (fun e -> lower_expr ctx_child e) exprs
+    let fl_child = {
+      slot_env = Hashtbl.copy ctx.frame.slot_env;
+      next_slot = ctx.frame.next_slot;
+      local_count = ctx.frame.local_count;
+    } in
+    let ctx_child = { ctx with frame = fl_child } in
+    List.iter (fun e -> lower_expr ctx_child e) exprs
 
 let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : string) (attrs : Semantics.attr_impl list) : Ir.method_info =
   let buf = Emit.create () in
@@ -324,9 +416,9 @@ let lower_class_group st env cname =
     try Hashtbl.find env.class_map cname with _ -> []
   in
 
-  let init_mi = lower_constructor st env cname attrs in
-  let init_mid = Hashtbl.find st.init_ids cname in
-  Gen.set_method st init_mid init_mi;
+  let construct = lower_constructor st env cname attrs in
+  let construct_id = Hashtbl.find st.init_ids cname in
+  Gen.set_method st construct_id construct;
 
   let meths = linear_methods env cname in
   let class_info = lower_class st env cname attrs meths in
