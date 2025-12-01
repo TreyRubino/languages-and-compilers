@@ -1,6 +1,6 @@
 (*
-   @author Trey Rubino
-   @date 11/17/2025
+@author Trey Rubino
+@date 11/30/2025
 *)
 
 open Printf
@@ -48,7 +48,7 @@ let dump_ir (filename : string) (ir : Ir.ir) : unit =
 
   let pf fmt = fprintf oc fmt in
 
-  pf "\n--- IR.consts ---\n%!";
+  pf "--- IR.consts ---\n%!";
   Array.iteri (fun i c ->
     match c with
     | Ir.LInt n    -> pf "%d: int %d\n%!" i n
@@ -59,11 +59,10 @@ let dump_ir (filename : string) (ir : Ir.ir) : unit =
 
   pf "\n--- IR.classes ---\n%!";
   Array.iter (fun (cls : Ir.class_info) ->
-    pf "class %s (id=%d parent=%d)\n%!" cls.name cls.id cls.parent_id;
+    pf "class %s (id=%d parent=%d size=%d)\n%!" cls.name cls.id cls.parent_id (Array.length cls.dispatch);
     Array.iter (fun (a : Ir.attr_info) ->
       pf "  attr %s @%d\n%!" a.name a.offset
-    ) cls.attributes;
-    pf "  dispatch size=%d\n%!" (Array.length cls.dispatch)
+    ) cls.attributes
   ) ir.classes;
 
   pf "\n--- IR.methods ---\n%!";

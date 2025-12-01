@@ -40,7 +40,7 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
   let entry_id =
     let main_cid =
       try Hashtbl.find st.class_ids "Main"
-      with Not_found -> Error.codegen "" "class Main not found"
+      with Not_found -> Error.codegen "0" "class Main not found"
     in
     let found = ref None in
     List.iteri (fun i (m : Ir.method_info) ->
@@ -48,7 +48,7 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
     ) !(st.methods);
     match !found with
     | Some id -> id
-    | None -> Error.codegen "" "Main.main not found"
+    | None -> Error.codegen "0" "Main.main not found"
   in
 
   Gen.to_ir st entry_id

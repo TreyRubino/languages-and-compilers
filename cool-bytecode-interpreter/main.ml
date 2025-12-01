@@ -49,6 +49,9 @@ let () =
         exit 1
   in
 
+  (* vm *)
+  Vm.execute ir;
+
   (* debugging *)
   Debug.dump_ir "debug.txt" ir;
   ()

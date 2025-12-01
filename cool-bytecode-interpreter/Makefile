@@ -13,6 +13,7 @@ PARSER  = frontend/parser
 CHECKER = frontend/checker
 
 CODEGEN = backend/codegen
+VM = backend/vm
 
 CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml $(CORE)/semantics.ml $(CORE)/bytecode.ml $(CORE)/ir.ml 
 CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo $(BUILD)/semantics.cmo $(BUILD)/bytecode.cmo $(BUILD)/ir.cmo
@@ -40,6 +41,7 @@ OBJS = \
 	$(BUILD)/lower.cmo \
 	$(BUILD)/debug.cmo \
 	$(BUILD)/codegen.cmo \
+	$(BUILD)/vm.cmo \
   $(BUILD)/main.cmo
 
 all: $(BUILD) core modules $(EXEC)
@@ -62,6 +64,7 @@ modules:
 	make -C $(LEXER)
 	make -C $(CHECKER)
 	make -C $(CODEGEN)
+	make -C $(VM)
 
 $(EXEC): $(OBJS)
 	$(OCAMLC) -I $(BUILD) -o $(EXEC) $(OBJS)
