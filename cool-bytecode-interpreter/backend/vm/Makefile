@@ -6,7 +6,7 @@
 OCAMLC = ocamlc -g
 BUILD = ../../build
 
-ML = runtime.ml alloc.ml stack.ml exec.ml vm.ml
+ML = runtime.ml stack.ml alloc.ml builtin.ml exec.ml vm.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
 all: $(BUILD) $(CMO)

@@ -44,14 +44,17 @@ let () =
     with
     | Error.E e -> Error.print e; exit 1
     | exn ->
-        Printf.printf "Unexpected exception: %s\n%!" (Printexc.to_string exn);
-        Printf.printf "%s\n%!" (Printexc.get_backtrace ());
-        exit 1
+      Printf.printf "Unexpected exception: %s\n%!" (Printexc.to_string exn);
+      Printf.printf "%s\n%!" (Printexc.get_backtrace ());
+      exit 1
   in
-
-  (* vm *)
-  Vm.execute ir;
 
   (* debugging *)
   Debug.dump_ir "debug.txt" ir;
-  ()
+
+  (* vm *)
+  try 
+    ignore (Vm.execute ir)
+  with 
+  | Error.E e -> Error.print e; exit 1
+

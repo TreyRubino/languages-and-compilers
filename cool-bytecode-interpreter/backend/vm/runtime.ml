@@ -3,6 +3,8 @@
 @date 11/30/2025
 *)
 
+open Ir
+
 type value = 
   | VInt of int
   | VBool of bool

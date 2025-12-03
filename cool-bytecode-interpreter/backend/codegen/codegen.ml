@@ -7,6 +7,7 @@ open Semantics
 open Gen
 open Lower
 open Bytecode
+open Debug
 
 let emit (env : Semantics.semantic_env) : Ir.ir =
   let st = Gen.create () in
@@ -38,17 +39,15 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
   ) class_names;
 
   let entry_id =
-    let main_cid =
-      try Hashtbl.find st.class_ids "Main"
-      with Not_found -> Error.codegen "0" "class Main not found"
-    in
     let found = ref None in
     List.iteri (fun i (m : Ir.method_info) ->
-      if m.class_id = main_cid && m.name = "main" then found := Some i
+      if m.name = "main" && not (String.starts_with ~prefix:"__init_" m.name)
+        then found := Some i
     ) !(st.methods);
     match !found with
     | Some id -> id
     | None -> Error.codegen "0" "Main.main not found"
   in
 
-  Gen.to_ir st entry_id
+  Gen.to_ir st entry_id 
+

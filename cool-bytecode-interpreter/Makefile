@@ -41,6 +41,11 @@ OBJS = \
 	$(BUILD)/lower.cmo \
 	$(BUILD)/debug.cmo \
 	$(BUILD)/codegen.cmo \
+	$(BUILD)/runtime.cmo \
+	$(BUILD)/stack.cmo \
+	$(BUILD)/alloc.cmo \
+	$(BUILD)/builtin.cmo \
+	$(BUILD)/exec.cmo \
 	$(BUILD)/vm.cmo \
   $(BUILD)/main.cmo
 
@@ -73,4 +78,8 @@ clean:
 	rm -rf $(BUILD)
 	rm -f $(EXEC)
 
-.PHONY: all core modules clean
+run: 
+	make clean && make
+	./cooli ./test/hello-world.cl
+
+.PHONY: all core modules clean run

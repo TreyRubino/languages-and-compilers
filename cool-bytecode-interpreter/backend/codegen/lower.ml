@@ -70,8 +70,8 @@ let lower_class st env cname attrs methods =
 let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
   match expr.expr_kind with
   | Integer s ->
-    let n = int_of_string s in
-    emit_op_i ctx.buf OP_CONST n
+    let id = Gen.add_const ctx.st (Ir.LInt (int_of_string s)) in
+    emit_op_i ctx.buf OP_CONST id
 
   | String s ->
     let id = Gen.add_const ctx.st (Ir.LString s) in
@@ -297,10 +297,18 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
       emit_op_i ctx.buf OP_CALL construct_id
     )
 
-  | SelfDispatch ((_, _), args) ->
+  | SelfDispatch ((mloc, mname), args) ->
     emit_op ctx.buf OP_GET_SELF;
     List.iter (fun a -> lower_expr ctx a) args;
-    emit_op_i ctx.buf OP_DISPATCH 0
+    let meths = linear_methods ctx.env ctx.cname in
+    let slot =
+      let rec find i = function
+        | [] -> Error.codegen mloc "method %s not found" mname
+        | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
+      in
+      find 0 meths
+    in
+    emit_op_i ctx.buf OP_DISPATCH slot
 
   | DynamicDispatch (recv, (mloc, mname), args) ->
     lower_expr ctx recv;
