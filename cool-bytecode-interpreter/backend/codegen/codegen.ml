@@ -13,8 +13,10 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
   let st = Gen.create () in
 
   let class_names =
-    Hashtbl.fold (fun c _ acc -> c :: acc) env.class_map []
-    |> List.sort compare
+    Hashtbl.fold (fun cname _ acc -> cname :: acc) env.class_map [] 
+    |> List.sort (fun c1 c2 ->
+        compare (depth env c1) (depth env c2)
+      )
   in
 
   List.iteri (fun i cname ->

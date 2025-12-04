@@ -32,8 +32,9 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
     Some (VObj frame.self_obj)
   | "out_string" -> 
     let v = frame.locals.(0) in
+    Printf.printf "Made it in out_string implementation";
     (match v with
-    | VString s -> print_string s; print_newline ()
+    | VString s -> Printf.printf "%s" s
     | _ -> Error.vm "0" "out_string expected String");
     Some (VObj frame.self_obj)
   | "in_init" -> 

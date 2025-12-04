@@ -117,7 +117,7 @@ let check (ast : Ast.cool_program) =
               in
               let typed_formals = find_typed_formals sig_.definer mname in 
               let impl = {
-                definer = sig_.definer;
+                definer = c;
                 formals = typed_formals;
                 body;
               } in
@@ -139,6 +139,5 @@ let check (ast : Ast.cool_program) =
     Hashtbl.iter (fun c p ->
       Hashtbl.replace env.parent_map c p
     ) parent_map;
-
     env
   );;

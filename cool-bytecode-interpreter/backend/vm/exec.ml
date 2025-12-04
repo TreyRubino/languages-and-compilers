@@ -247,7 +247,7 @@ let run (st : vm_state) : value =
         let recv =
           match Stack.pop_val st with
           | VObj o -> o
-          | VString s -> Printf.printf "string\n"; exit 1
+          | VString s -> Printf.printf "%s\n" s; exit 1
           | _ -> Error.vm "0" "DISPATCH on non-object receiver"
         in
         let cls = st.ir.classes.(recv.class_id) in

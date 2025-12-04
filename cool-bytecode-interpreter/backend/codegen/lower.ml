@@ -57,8 +57,17 @@ let lower_class st env cname attrs methods =
     Array.mapi (fun i a -> lower_attr a i) (Array.of_list all_attrs)
   in
   let disp =
-    Array.init (List.length methods) (fun i -> i)
+    Array.of_list (
+      List.map (fun (mname, impl) ->
+        let definer = impl.definer in
+        try Hashtbl.find st.method_ids (definer, mname)
+        with Not_found ->
+          Error.codegen "" "dispatch: missing method %s in class %s (definer=%s)"
+            mname cname definer
+      ) methods
+    )
   in
+
   {
     name = cname;
     id;
@@ -429,13 +438,12 @@ let lower_class_group st env cname =
   Gen.set_method st construct_id construct;
 
   let meths = linear_methods env cname in
+  List.iter (fun (mname, impl) ->
+    let mi = lower_method st env cname mname impl in
+    let mid = Gen.add_method st mi in
+    Hashtbl.replace st.method_ids (cname, mname) mid
+  ) meths;
+
   let class_info = lower_class st env cname attrs meths in
   Gen.add_class st class_info;
-
-  List.iter (fun (mname, impl) ->
-    if impl.definer = cname then (
-      let mi = lower_method st env cname mname impl in
-      ignore (Gen.add_method st mi)
-    )
-  ) meths
 

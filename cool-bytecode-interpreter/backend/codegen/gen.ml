@@ -10,6 +10,7 @@ type t = {
   classes : class_info list ref;
   methods : method_info list ref;
   class_ids : (string, int) Hashtbl.t;
+  method_ids : ((string * string), int) Hashtbl.t;
   init_ids  : (string, int) Hashtbl.t;
 }
 
@@ -18,6 +19,7 @@ let create () = {
   classes = ref [];
   methods = ref [];
   class_ids = Hashtbl.create 255;
+  method_ids = Hashtbl.create 255;
   init_ids = Hashtbl.create 255;
 }
 
@@ -28,7 +30,7 @@ let add_const st lit =
 
 let add_method st m =
   let id = List.length !(st.methods) in
-  st.methods := !(st.methods) @ [m];
+  st.methods := m :: !(st.methods);
   id
 
 let set_method st id m =
