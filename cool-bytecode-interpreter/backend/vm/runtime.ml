@@ -5,16 +5,21 @@
 
 open Ir
 
-type value = 
-  | VInt of int
-  | VBool of bool
-  | VString of string
+type payload =
+  | PNormal
+  | PInt of int
+  | PBool of bool
+  | PString of string
+
+type value =
   | VObj of obj
   | VVoid
 
 and obj = {
-  class_id : int; 
-  fields : value array
+  class_id : int;
+  fields : value array;
+  mutable payload : payload;
+  mutable marked : bool;
 }
 
 type frame = {
@@ -31,13 +36,6 @@ type vm_state = {
   mutable heap : obj list;
 }
 
-let new_object (cls : Ir.class_info) : obj = 
-  let nfields = Array.length cls.attributes in
-  {
-    class_id = cls.id;
-    fields = Array.make nfields VVoid;
-  }
-
 let create_vm (ir : Ir.ir) : vm_state = 
   {
     ir;
@@ -45,3 +43,13 @@ let create_vm (ir : Ir.ir) : vm_state =
     frames = [];
     heap = [];
   }
+
+let string_of_value v =
+  match v with
+  | VVoid -> "void"
+  | VObj o ->
+      match o.payload with
+      | PInt i -> Printf.sprintf "Int(%d)" i
+      | PBool b -> Printf.sprintf "Bool(%b)" b
+      | PString s -> Printf.sprintf "String(%s)" s
+      | PNormal -> Printf.sprintf "Obj<%d>" o.class_id

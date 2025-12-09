@@ -23,6 +23,20 @@ type lower_ctx = {
   frame : Layout.frame_layout;
 }
 
+let dispatch_slot env cname mname =
+  match mname with
+  | "copy" -> 0
+  | "abort" -> 1
+  | "type_name" -> 2
+  | _ ->
+    (* Semantics.linear_methods should be “everything except Object’s 3 base methods” *)
+    let meths = linear_methods env cname in
+    let rec find i = function
+      | [] -> Error.codegen "" "no method %s found in %s" mname cname
+      | (n, _) :: xs -> if n = mname then i else find (i + 1) xs
+    in
+    3 + find 0 meths
+
 let rec linear_tags (ctx : lower_ctx)  (cname : string) =
   let tag = Hashtbl.find ctx.st.class_ids cname in
   let parent = 
@@ -44,36 +58,62 @@ let rec depth env cname =
 let lower_attr a offset =
   { name = a.aname; offset }
 
-let lower_class st env cname attrs methods =
+let lower_class st env cname attrs _methods =
   let id = Hashtbl.find st.class_ids cname in
+
   let parent =
-    try Hashtbl.find env.parent_map cname with _ -> cname
+    match Hashtbl.find_opt env.parent_map cname with
+    | Some p -> p
+    | None -> "Object"
   in
+
   let parent_id =
-    try Hashtbl.find st.class_ids parent with _ -> -1
+    match Hashtbl.find_opt st.class_ids parent with
+    | Some pid -> pid
+    | None -> -1
   in
+
+  (* attributes *)
   let all_attrs = linear_attrs env cname in
   let attrs_arr =
-    Array.mapi (fun i a -> lower_attr a i) (Array.of_list all_attrs)
+    Array.mapi (fun i a -> { name = a.aname; offset = i })
+      (Array.of_list all_attrs)
   in
-  let disp =
-    Array.of_list (
-      List.map (fun (mname, impl) ->
-        let definer = impl.definer in
-        try Hashtbl.find st.method_ids (definer, mname)
-        with Not_found ->
-          Error.codegen "" "dispatch: missing method %s in class %s (definer=%s)"
-            mname cname definer
-      ) methods
-    )
+
+  (* parent dispatch *)
+  let parent_disp =
+    if parent <> cname && parent_id >= 0 then
+      (Gen.get_class st parent_id).dispatch |> Array.to_list
+    else
+      []
   in
+
+  let disp = ref parent_disp in
+  let meths = linear_methods env cname in
+
+  List.iter (fun (mname, impl) ->
+    match Hashtbl.find_opt st.method_ids (impl.definer, mname) with
+    | None -> ()
+    | Some mid ->
+        let rec update = function
+          | [] -> (false, [])
+          | smid :: xs ->
+              if (Gen.get_method st smid).name = mname then
+                (true, mid :: xs)
+              else
+                let (found, rest) = update xs in
+                (found, smid :: rest)
+        in
+        let (found, new_disp) = update !disp in
+        if found then disp := new_disp else disp := !disp @ [mid]
+  ) meths;
 
   {
     name = cname;
     id;
     parent_id;
     attributes = attrs_arr;
-    dispatch = disp;
+    dispatch = Array.of_list !disp;
   }
 
 let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
@@ -287,69 +327,59 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
   | New ((cloc, cname)) ->
     (match cname with
     | "SELF_TYPE" ->
-      emit_op ctx.buf OP_NEW_SELF_TYPE;
-      let construct_id =
-        try Hashtbl.find ctx.st.init_ids ctx.cname
-        with Not_found -> Error.codegen cloc "missing init for class %s" ctx.cname
-      in
-      emit_op_i ctx.buf OP_CALL construct_id
+        emit_op ctx.buf OP_NEW_SELF_TYPE          (* alloc + init in VM *)
     | _ ->
-      let cid =
-        try Hashtbl.find ctx.st.class_ids cname
-        with Not_found -> Error.codegen cloc "unknown class %s" cname
-      in
-      emit_op_i ctx.buf OP_NEW cid;
-      let construct_id =
-        try Hashtbl.find ctx.st.init_ids cname
-        with Not_found -> Error.codegen cloc "missing init for class %s" cname
-      in
-      emit_op_i ctx.buf OP_CALL construct_id
+        let cid =
+          try Hashtbl.find ctx.st.class_ids cname
+          with Not_found -> Error.codegen cloc "unknown class %s" cname
+        in
+        emit_op_i ctx.buf OP_NEW cid;             (* allocate object *)
+        let init_mid =
+          try Hashtbl.find ctx.st.init_ids cname
+          with Not_found -> Error.codegen cloc "missing init %s" cname
+        in
+        emit_op_i ctx.buf OP_CALL init_mid        (* <<< REQUIRED <<< *)
     )
 
-  | SelfDispatch ((mloc, mname), args) ->
-    emit_op ctx.buf OP_GET_SELF;
-    List.iter (fun a -> lower_expr ctx a) args;
-    let meths = linear_methods ctx.env ctx.cname in
-    let slot =
-      let rec find i = function
-        | [] -> Error.codegen mloc "method %s not found" mname
-        | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
-      in
-      find 0 meths
-    in
-    emit_op_i ctx.buf OP_DISPATCH slot
+  | SelfDispatch ((_mloc, mname), args) ->
+      List.iter (fun a -> lower_expr ctx a) args;  (* push args first *)
+      emit_op ctx.buf OP_GET_SELF;                (* receiver on top *)
+      let slot = dispatch_slot ctx.env ctx.cname mname in
+      emit_op_i ctx.buf OP_DISPATCH slot
 
-  | DynamicDispatch (recv, (mloc, mname), args) ->
-    lower_expr ctx recv;
-    List.iter (fun a -> lower_expr ctx a) args;
-    let cname =
-      match recv.static_type with
-      | Some (Class c) -> c
-      | Some (SELF_TYPE c) -> c
-      | _ -> Error.codegen recv.loc "receiver has no static type"
-    in
-    let meths = linear_methods ctx.env cname in
-    let slot =
-      let rec find i = function
-        | [] -> Error.codegen mloc "method %s not found" mname
-        | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
-      in
-      find 0 meths
-    in
-    emit_op_i ctx.buf OP_DISPATCH slot
+  | DynamicDispatch (recv, (_mloc, mname), args) ->
+      List.iter (fun a -> lower_expr ctx a) args;  (* push args first *)
+      lower_expr ctx recv;                         (* receiver on top *)
 
-  | StaticDispatch (recv, (cloc, cname), (mloc, mname), args) ->
-    lower_expr ctx recv;
-    List.iter (fun a -> lower_expr ctx a) args;
-    let meths = linear_methods ctx.env cname in
-    let slot =
-      let rec find i = function
-        | [] -> Error.codegen mloc "method %s not found" mname
-        | (name, _) :: tl -> if name = mname then i else find (i + 1) tl
+      let cname =
+        match recv.static_type with
+        | Some (Class c) -> c
+        | Some (SELF_TYPE c) -> c
+        | _ -> Error.codegen recv.loc "no static type for dispatch"
       in
-      find 0 meths
-    in
-    emit_op_i ctx.buf OP_STATIC_DISPATCH slot
+
+      let slot = dispatch_slot ctx.env cname mname in
+      emit_op_i ctx.buf OP_DISPATCH slot
+
+  | StaticDispatch (recv, (_cloc, tname), (mloc, mname), args) ->
+      List.iter (fun a -> lower_expr ctx a) args;  (* push args first *)
+      lower_expr ctx recv;                         (* receiver on top *)
+
+      let meths = linear_methods ctx.env tname in
+      let impl =
+        let rec find = function
+          | [] -> Error.codegen mloc "method %s not found in %s" mname tname
+          | (name, impl) :: tl -> if name = mname then impl else find tl
+        in
+        find meths
+      in
+
+      let mid =
+        try Hashtbl.find ctx.st.method_ids (impl.definer, mname)
+        with Not_found ->
+          Error.codegen mloc "missing method id for %s.%s" impl.definer mname
+      in
+      emit_op_i ctx.buf OP_STATIC_DISPATCH mid
 
   | Block exprs ->
     let fl_child = {
@@ -360,7 +390,8 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     let ctx_child = { ctx with frame = fl_child } in
     List.iter (fun e -> lower_expr ctx_child e) exprs
 
-let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : string) (attrs : Semantics.attr_impl list) : Ir.method_info =
+let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : string) (attrs : Semantics.attr_impl list) 
+: Ir.method_info =
   let buf = Emit.create () in
   let frame = Layout.create_frame_layout [] in
   let ctx = { st; buf; env; cname; frame } in
@@ -415,16 +446,28 @@ let lower_method st env cname mname impl =
 
   (match impl.body with
   | Internal _ ->
-      emit_op buf OP_RETURN
+    emit_op buf OP_RETURN
   | User body ->
-      lower_expr ctx body;
-      emit_op buf OP_RETURN);
+    lower_expr ctx body;
+    emit_op buf OP_RETURN);
 
+  let n_formals =
+    match impl.body with
+    | Internal { qname; _ } ->
+      (match qname with
+      | "IO.out_int" -> 1
+      | "IO.out_string" -> 1
+      | "String.concat" -> 1
+      | "String.substr" -> 2
+      | _ -> 0)
+    | User _ ->
+      List.length impl.formals
+  in
   {
     name = mname;
     class_id = Hashtbl.find st.class_ids cname;
     n_locals = !(frame.local_count);
-    n_formals = List.length impl.formals;
+    n_formals;
     code = Emit.to_program buf;
   }
 
@@ -433,17 +476,28 @@ let lower_class_group st env cname =
     try Hashtbl.find env.class_map cname with _ -> []
   in
 
+  (* constructor *)
   let construct = lower_constructor st env cname attrs in
   let construct_id = Hashtbl.find st.init_ids cname in
   Gen.set_method st construct_id construct;
-
   let meths = linear_methods env cname in
   List.iter (fun (mname, impl) ->
-    let mi = lower_method st env cname mname impl in
-    let mid = Gen.add_method st mi in
-    Hashtbl.replace st.method_ids (cname, mname) mid
+    if not (String.starts_with ~prefix:"__init_" mname) then (
+      if impl.definer = cname then (
+        let mi = lower_method st env cname mname impl in
+        let mid = Gen.add_method st mi in
+        Hashtbl.replace st.method_ids (cname, mname) mid
+      )
+    )
   ) meths;
-
   let class_info = lower_class st env cname attrs meths in
+  Printf.printf "--- dispatch for %s ---\n" cname;
+  Array.iteri (fun i mid ->
+    let m = Gen.get_method st mid in
+    Printf.printf "  slot %d -> %d.%s\n" i m.class_id m.name
+  ) class_info.dispatch;
+  flush stdout;
+
   Gen.add_class st class_info;
+
 

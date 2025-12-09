@@ -67,7 +67,6 @@ type opcode =
   | OP_RETURN -> "OP_RETURN"
   | OP_NOP -> "OP_NOP"
 
-
 type operand = 
   | NoArg
   | IntArg of int

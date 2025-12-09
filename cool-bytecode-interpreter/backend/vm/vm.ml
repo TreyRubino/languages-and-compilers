@@ -19,7 +19,6 @@ let execute ir =
     | VObj o -> o
     | _ -> Error.vm "0" "main object is not an object"
   in
-  ignore (Exec.run st);
   Stack.push_frame st main_obj ir.entry_method [];
   Exec.run st
 

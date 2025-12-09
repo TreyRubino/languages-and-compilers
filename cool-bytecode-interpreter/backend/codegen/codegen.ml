@@ -25,14 +25,13 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
 
   List.iter (fun cname ->
     let class_id = Hashtbl.find st.class_ids cname in
-    let dummy = {
+    let mid = Gen.add_method st {
       Ir.name = "__init_" ^ cname;
       class_id;
       n_locals = 0;
       n_formals = 0;
-      code = [| { op = OP_RETURN; arg = NoArg } |];
+      code = [||];   (* empty, will be replaced *)
     } in
-    let mid = Gen.add_method st dummy in
     Hashtbl.replace st.init_ids cname mid
   ) class_names;
 

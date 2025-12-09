@@ -30,7 +30,7 @@ let add_const st lit =
 
 let add_method st m =
   let id = List.length !(st.methods) in
-  st.methods := m :: !(st.methods);
+  st.methods := !(st.methods) @ [m];
   id
 
 let set_method st id m =
@@ -44,6 +44,14 @@ let set_method st id m =
 
 let add_class st c =
   st.classes := !(st.classes) @ [c]
+
+let get_method st id =
+  try List.nth !(st.methods) id
+  with _ -> failwith ("get_method: bad id " ^ string_of_int id)
+
+let get_class st id =
+  try List.nth !(st.classes) id
+  with _ -> failwith ("get_class: bad id " ^ string_of_int id)
 
 let to_ir st entry_id =
   let consts  = Array.of_list !(st.consts) in

@@ -115,9 +115,9 @@ let check (ast : Ast.cool_program) =
                 | Some (Method (_, _, _, b)) -> User b
                 | _ -> Internal { rtype = sig_.ret; qname = c ^ "." ^ mname }
               in
-              let typed_formals = find_typed_formals sig_.definer mname in 
+              let typed_formals = find_typed_formals sig_.definer mname in
               let impl = {
-                definer = c;
+                definer = sig_.definer;
                 formals = typed_formals;
                 body;
               } in
