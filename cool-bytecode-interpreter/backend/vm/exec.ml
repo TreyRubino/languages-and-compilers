@@ -77,11 +77,11 @@ let run (st : vm_state) : value =
 
     | OP_GET_LOCAL ->
       (match instr.arg with
-        | IntArg slot ->
-          let v = Stack.get_local st slot in
-          Stack.push_val st v
-        | _ ->
-          Error.vm "0" "GET_LOCAL missing IntArg");
+      | IntArg slot ->
+        let v = Stack.get_local st slot in
+        Stack.push_val st v
+      | _ ->
+        Error.vm "0" "GET_LOCAL missing IntArg");
       loop ()
 
     | OP_SET_LOCAL ->
@@ -134,12 +134,11 @@ let run (st : vm_state) : value =
     | OP_NEW ->
       (match instr.arg with
       | IntArg cid ->
-          (* Allocate only. Codegen will emit CALL __init_<Class> explicitly. *)
-          let o = Alloc.allocate_object st cid in
-          Stack.push_val st (VObj o);
-          loop ()
+        let o = Alloc.allocate_object st cid in
+        Stack.push_val st (VObj o);
+        loop ()
       | _ ->
-          Error.vm "0" "NEW missing IntArg")
+        Error.vm "0" "NEW missing IntArg")
 
     | OP_NEW_SELF_TYPE ->
       (* new SELF_TYPE: allocate + dynamically call the right __init_<dynamic> *)
@@ -162,7 +161,6 @@ let run (st : vm_state) : value =
       (* Do NOT push (VObj o) here; __init_* will RETURN self and that becomes the value. *)
       Stack.push_frame st o init_mid [];
       loop ()
-
 
     | OP_JUMP ->
       Error.vm "0" "jmp not implemented yet";
@@ -260,60 +258,55 @@ let run (st : vm_state) : value =
     | OP_DISPATCH ->
       (match instr.arg with
       | IntArg slot ->
-          (* pop args FIRST *)
-          let cls = 
-            match Stack.peek_val st with        (* receiver is BELOW args, so peek *)
-            | VObj o -> st.ir.classes.(o.class_id)
-            | _ -> Error.vm "0" "dispatch on non-object"
-          in
+        (* pop args *)
+        let cls = 
+          match Stack.peek_val st with        (* receiver is BELOW args, so peek *)
+          | VObj o -> st.ir.classes.(o.class_id)
+          | _ -> Error.vm "0" "dispatch on non-object"
+        in
+        let nargs = (st.ir.methods.(cls.dispatch.(slot))).n_formals in
+        let rec pop_args acc n =
+          if n = 0 then acc
+          else pop_args (Stack.pop_val st :: acc) (n-1)
+        in
+        let args = pop_args [] nargs in
 
-          let nargs = (st.ir.methods.(cls.dispatch.(slot))).n_formals in
-          let rec pop_args acc n =
-            if n = 0 then acc
-            else pop_args (Stack.pop_val st :: acc) (n-1)
-          in
-          let args = pop_args [] nargs in
+        (* then pop receiver  *)
+        let recv =
+          match Stack.pop_val st with
+          | VObj o -> o
+          | _ -> Error.vm "0" "dispatch missing receiver"
+        in
 
-          (* now pop receiver LAST *)
-          let recv =
-            match Stack.pop_val st with
-            | VObj o -> o
-            | _ -> Error.vm "0" "dispatch missing receiver"
-          in
-
-          (* dispatch actual method *)
-          let mid = cls.dispatch.(slot) in
-          Stack.push_frame st recv mid args;
-          loop ()
+        (* dispatch actual method *)
+        let mid = cls.dispatch.(slot) in
+        Stack.push_frame st recv mid args;
+        loop ()
       | _ -> Error.vm "0" "DISPATCH missing IntArg")
-
-
-
 
     | OP_STATIC_DISPATCH ->
       (match instr.arg with
       | IntArg mid ->
-          let m = st.ir.methods.(mid) in
-          let nargs = m.n_formals in
+        let m = st.ir.methods.(mid) in
+        let nargs = m.n_formals in
 
-          (* pop args FIRST *)
-          let rec pop_args acc n =
-            if n = 0 then acc
-            else pop_args (Stack.pop_val st :: acc) (n-1)
-          in
-          let args = pop_args [] nargs in
+        (* pop args FIRST *)
+        let rec pop_args acc n =
+          if n = 0 then acc
+          else pop_args (Stack.pop_val st :: acc) (n-1)
+        in
+        let args = pop_args [] nargs in
 
-          (* NOW pop receiver LAST (IMPORTANT) *)
-          let recv =
-            match Stack.pop_val st with
-            | VObj o -> o
-            | _ -> Error.vm "0" "STATIC_DISPATCH missing receiver"
-          in
+        (* NOW pop receiver LAST (IMPORTANT) *)
+        let recv =
+          match Stack.pop_val st with
+          | VObj o -> o
+          | _ -> Error.vm "0" "STATIC_DISPATCH missing receiver"
+        in
 
-          Stack.push_frame st recv mid args;
-          loop ()
+        Stack.push_frame st recv mid args;
+        loop ()
       | _ -> Error.vm "0" "STATIC_DISPATCH missing IntArg")
-
 
     | OP_RETURN ->
       let frame =

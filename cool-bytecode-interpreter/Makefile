@@ -1,7 +1,7 @@
 # Trey Rubino
 # CPSC 372 Independent Study
 # Dr. Schwesinger
-# Lexer build
+# Build instructions
 
 OCAMLC = ocamlc -g
 BUILD  = build

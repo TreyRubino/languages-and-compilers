@@ -95,17 +95,17 @@ let lower_class st env cname attrs _methods =
     match Hashtbl.find_opt st.method_ids (impl.definer, mname) with
     | None -> ()
     | Some mid ->
-        let rec update = function
-          | [] -> (false, [])
-          | smid :: xs ->
-              if (Gen.get_method st smid).name = mname then
-                (true, mid :: xs)
-              else
-                let (found, rest) = update xs in
-                (found, smid :: rest)
-        in
-        let (found, new_disp) = update !disp in
-        if found then disp := new_disp else disp := !disp @ [mid]
+      let rec update = function
+        | [] -> (false, [])
+        | smid :: xs ->
+          if (Gen.get_method st smid).name = mname then
+            (true, mid :: xs)
+          else
+            let (found, rest) = update xs in
+            (found, smid :: rest)
+      in
+      let (found, new_disp) = update !disp in
+      if found then disp := new_disp else disp := !disp @ [mid]
   ) meths;
 
   {
@@ -338,7 +338,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
           try Hashtbl.find ctx.st.init_ids cname
           with Not_found -> Error.codegen cloc "missing init %s" cname
         in
-        emit_op_i ctx.buf OP_CALL init_mid        (* <<< REQUIRED <<< *)
+        emit_op_i ctx.buf OP_CALL init_mid        
     )
 
   | SelfDispatch ((_mloc, mname), args) ->

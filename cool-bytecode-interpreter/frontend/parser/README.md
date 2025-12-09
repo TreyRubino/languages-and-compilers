@@ -1,6 +1,6 @@
 # The Parser
 Trey Rubino - 
-CPSC 425 -
+CPSC 372 -
 Dr. Schwesinger
 
 ## Project Structure
