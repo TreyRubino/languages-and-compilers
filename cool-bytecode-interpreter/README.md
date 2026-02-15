@@ -43,7 +43,7 @@ traditional compiler structure: lexing and parsing produce the AST, semantic
 analysis enforces correctness, code generation constructs a machine-executable
 IR, and the VM interprets that IR deterministically. Each subsystem documents
 its own behavior through a directory-level README; this file serves as a
-top-level directory guide and a living technical notebook.
+top-level directory guide.
 
 ## Design  
 The system adopts a clean, modular architecture. The frontend enforces all
@@ -61,52 +61,3 @@ constructs the main object, invokes constructors, manages frames and runtime
 stacks, and executes instructions until the entry method completes. Each module
 interacts only through the shared structures defined under `core/`, ensuring a
 consistent and maintainable implementation.
-
-# Technical Logs / Developer Notes  
-This section provides a structured engineering log for documenting fixes,
-features, refactors, and design decisions throughout development.
-
-## Entry Template Example
-### [YYYY-MM-DD] — Category  
-**Subsystem:** (frontend / backend / core / vm / codegen / parser / lexer / checker / tests)  
-**Summary:** One-line description of the change.  
-**Details:**  
-- What was changed and why  
-- Design reasoning or constraints  
-- Interactions with other modules  
-- Follow-up or remaining tasks  
-
-**Files / Modules Affected:**  
-List file paths, functions, or modules touched.
-
-**Status:** Completed / In Progress / Pending
-
----
-
-### 2025-12-08 — Bug Fix  
-**Subsystem:** Backend / VM  
-**Summary:** Corrected argument popping order for dynamic dispatch.  
-**Details:**  
-- Args now pop before the receiver, matching codegen calling convention  
-- Fixes incorrect evaluation order in overridden methods  
-
-**Files / Modules Affected:**  
-`vm/exec.ml` — OP_DISPATCH branch  
-
-**Status:** Completed
-
----
-
-### 2025-12-10 — Design Decision  
-**Subsystem:** Core  
-**Summary:** Retained explicit `SELF_TYPE` tagging in AST expressions.  
-**Details:**  
-- Simplifies lowering and preserves invariant needed for correct runtime
-  SELF_TYPE allocation  
-
-**Files / Modules Affected:**  
-`core/ast.ml`  
-
-**Status:** Completed
-
----

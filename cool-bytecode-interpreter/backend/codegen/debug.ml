@@ -22,7 +22,7 @@ let string_of_opcode = function
   | OP_CALL -> "CALL"
   | OP_JUMP -> "JUMP"
   | OP_JUMP_IF_FALSE -> "JUMP_IF_FALSE"
-  | OP_LOOP -> "LOOP"
+  | OP_CASE_ABORT -> "OP_CASE_ABORT"
   | OP_ADD -> "ADD"
   | OP_SUB -> "SUB"
   | OP_MUL -> "MUL"
@@ -48,6 +48,10 @@ let dump_ir (filename : string) (ir : Ir.ir) : unit =
 
   let pf fmt = fprintf oc fmt in
 
+  let class_name (ir : Ir.ir) (cid : int) =
+    ir.classes.(cid).name
+  in
+
   pf "--- IR.consts ---\n%!";
   Array.iteri (fun i c ->
     match c with
@@ -68,8 +72,9 @@ let dump_ir (filename : string) (ir : Ir.ir) : unit =
   pf "\n--- IR.methods ---\n%!";
 
   Array.iteri (fun i (m : Ir.method_info) ->
-    pf "method[%d] %s (class=%d formals=%d locals=%d)\n%!"
-      i m.name m.class_id m.n_formals m.n_locals;
+    let cls = class_name ir m.class_id in
+    pf "method[%d] %s.%s (class=%d formals=%d locals=%d)\n%!"
+      i cls m.name m.class_id m.n_formals m.n_locals;
 
     pf "  code size=%d\n%!" (Array.length m.code);
 

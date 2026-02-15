@@ -89,7 +89,6 @@ let run (st : vm_state) : value =
       | IntArg slot ->
         let v = Stack.pop_val st in
         Stack.set_local st slot v;
-        Stack.push_val st v
       | _ ->
         Error.vm "0" "SET_LOCAL missing IntArg");
       loop ()
@@ -126,7 +125,6 @@ let run (st : vm_state) : value =
           | _ -> Error.vm "0" "SET_ATTR on non-object"
         in
         Array.set recv.fields off v;
-        Stack.push_val st v
       | _ ->
         Error.vm "0" "SET_ATTR missing IntArg");
       loop ()
@@ -141,7 +139,6 @@ let run (st : vm_state) : value =
         Error.vm "0" "NEW missing IntArg")
 
     | OP_NEW_SELF_TYPE ->
-      (* new SELF_TYPE: allocate + dynamically call the right __init_<dynamic> *)
       let self =
         match st.frames with
         | f :: _ -> f.self_obj
@@ -158,31 +155,41 @@ let run (st : vm_state) : value =
         else find_init (i + 1)
       in
       let init_mid = find_init 0 in
-      (* Do NOT push (VObj o) here; __init_* will RETURN self and that becomes the value. *)
       Stack.push_frame st o init_mid [];
       loop ()
 
     | OP_JUMP ->
-      Error.vm "0" "jmp not implemented yet";
-      loop ()
+      (match instr.arg with 
+      | IntArg offset | OffsetArg offset -> 
+        frame.pc <- frame.pc + offset;
+        loop ()
+      | _ -> Error.vm "0" "JUMP missing offset")
 
     | OP_JUMP_IF_FALSE ->
-      Error.vm "0" "jmp if false not implemented yet";
-      loop ()
+      (match instr.arg with
+      | IntArg offset | OffsetArg offset -> 
+        let v = Stack.pop_val st in
+        let b = 
+          match v with 
+          | VObj o -> 
+            (match o.payload with
+            | PBool b -> b
+            | _ -> Error.vm "0" "jump predicate not boolean")
+          | VVoid -> Error.vm "0" "jump predicate void"
+        in
+        if not b then (
+          frame.pc <- frame.pc + offset
+        ); 
+        loop ()
+      | _ -> Error.vm "0" "JUMP_IF_FALSE missing offset")
 
-    | OP_LOOP ->
-      Error.vm "0" "loop not implemented yet";
-      loop ()
+    | OP_CASE_ABORT -> 
+      Error.vm "0" "case statement without matching branch"
 
-  | OP_ADD ->
-      let rhs = Stack.pop_val st in
-      let lhs = Stack.pop_val st in
-      Printf.printf "ADD lhs=%s rhs=%s\n%!"
-        (Runtime.string_of_value lhs)
-        (Runtime.string_of_value rhs);
-      let rhs_i = expect_int rhs in
-      let lhs_i = expect_int lhs in
-      Stack.push_val st (Alloc.box_int st (lhs_i + rhs_i));
+    | OP_ADD ->
+      let rhs_i = expect_int (Stack.pop_val st) in
+      let lhs_i = expect_int (Stack.pop_val st) in
+      Stack.push_val st (Alloc.box_int st (to_int32 (lhs_i + rhs_i)));
       loop ()
 
     | OP_SUB ->
@@ -215,22 +222,40 @@ let run (st : vm_state) : value =
       loop ()
 
     | OP_EQUAL ->
-      Error.vm "0" "equal not implemented yet";
+      let rhs = Stack.pop_val st in
+      let lhs = Stack.pop_val st in
+      let eq = 
+        match lhs, rhs with
+        | VVoid, VVoid -> true
+        | VVoid, _ -> false
+        | _, VVoid -> false
+
+        | VObj o1, VObj o2 -> 
+          match o1.payload, o2.payload with
+          | PInt lhs_i, PInt rhs_i -> lhs_i = rhs_i
+          | PBool lhs_b, PBool rhs_b -> lhs_b = rhs_b
+          | PString lhs_s, PString rhs_s -> lhs_s = rhs_s
+          | _ -> o1 == o2 (* physical equality checks address eqaulity *)
+      in 
+      Stack.push_val st (Alloc.box_bool st eq);
       loop ()
 
     | OP_LESS ->
-      Error.vm "0" "less not implemented yet";
+      let rhs = expect_int (Stack.pop_val st) in
+      let lhs = expect_int (Stack.pop_val st) in
+      Stack.push_val st (Alloc.box_bool st (lhs < rhs));
       loop ()
 
     | OP_LESS_EQUAL ->
-      Error.vm "0" "less than or equal to not implemented yet";
+      let rhs = expect_int (Stack.pop_val st) in
+      let lhs = expect_int (Stack.pop_val st) in
+      Stack.push_val st (Alloc.box_bool st (lhs <= rhs));
       loop ()
 
     | OP_ISVOID ->
       let v = Stack.pop_val st in
-      (match v with
-      | VVoid -> Stack.push_val st (Alloc.box_bool st true)
-      | _ -> Stack.push_val st (Alloc.box_bool st false));
+      let is_v = match v with VVoid -> true | _ -> false in
+      Stack.push_val st (Alloc.box_bool st is_v);
       loop ()
 
     | OP_CALL ->
@@ -239,47 +264,42 @@ let run (st : vm_state) : value =
         let m = st.ir.methods.(mid) in
         let nargs = m.n_formals in
 
-        let rec pop_args acc n =
-          if n = 0 then acc
-          else pop_args (Stack.pop_val st :: acc) (n - 1)
-        in
-        let args = pop_args [] nargs in
-
         let recv =
           match Stack.pop_val st with
           | VObj o -> o
           | _ -> Error.vm "0" "CALL without object receiver"
         in
 
+        let rec pop_args acc n =
+          if n = 0 then acc
+          else pop_args (Stack.pop_val st :: acc) (n - 1)
+        in
+        let args = pop_args [] nargs in
+
         Stack.push_frame st recv mid args;
         loop ()
-      | _ -> Error.vm "0" "CALL missing IntArg")
+      | _ ->
+        Error.vm "0" "CALL missing IntArg")
 
     | OP_DISPATCH ->
       (match instr.arg with
       | IntArg slot ->
-        (* pop args *)
-        let cls = 
-          match Stack.peek_val st with        (* receiver is BELOW args, so peek *)
-          | VObj o -> st.ir.classes.(o.class_id)
+        let recv = 
+          match Stack.pop_val st with
+          | VObj o -> o
           | _ -> Error.vm "0" "dispatch on non-object"
         in
-        let nargs = (st.ir.methods.(cls.dispatch.(slot))).n_formals in
+
+        let cls = st.ir.classes.(recv.class_id) in
+        let mid = cls.dispatch.(slot) in
+        let m = st.ir.methods.(mid) in
+        let nargs = m.n_formals in
+
         let rec pop_args acc n =
           if n = 0 then acc
           else pop_args (Stack.pop_val st :: acc) (n-1)
         in
         let args = pop_args [] nargs in
-
-        (* then pop receiver  *)
-        let recv =
-          match Stack.pop_val st with
-          | VObj o -> o
-          | _ -> Error.vm "0" "dispatch missing receiver"
-        in
-
-        (* dispatch actual method *)
-        let mid = cls.dispatch.(slot) in
         Stack.push_frame st recv mid args;
         loop ()
       | _ -> Error.vm "0" "DISPATCH missing IntArg")
@@ -287,23 +307,21 @@ let run (st : vm_state) : value =
     | OP_STATIC_DISPATCH ->
       (match instr.arg with
       | IntArg mid ->
+        let recv = 
+          match Stack.pop_val st with
+          | VObj o -> o 
+          | _ -> Error.vm "0" "STATIC_DISPATCH missing receiver"
+        in
+
         let m = st.ir.methods.(mid) in
         let nargs = m.n_formals in
 
-        (* pop args FIRST *)
+        (* pop args first *)
         let rec pop_args acc n =
           if n = 0 then acc
           else pop_args (Stack.pop_val st :: acc) (n-1)
         in
         let args = pop_args [] nargs in
-
-        (* NOW pop receiver LAST (IMPORTANT) *)
-        let recv =
-          match Stack.pop_val st with
-          | VObj o -> o
-          | _ -> Error.vm "0" "STATIC_DISPATCH missing receiver"
-        in
-
         Stack.push_frame st recv mid args;
         loop ()
       | _ -> Error.vm "0" "STATIC_DISPATCH missing IntArg")

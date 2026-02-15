@@ -80,6 +80,6 @@ clean:
 
 run: 
 	make clean && make
-	./cooli ./test/hello-world.cl
+	./cooli ./test/good.cl
 
 .PHONY: all core modules clean run

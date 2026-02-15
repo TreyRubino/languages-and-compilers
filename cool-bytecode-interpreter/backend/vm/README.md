@@ -68,8 +68,5 @@ no further frames remain, at which point the final value is produced as the
 result of program execution.
 
 ## References  
-[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University,
-    The COOL Language Project, Jan. 2011.  
-[2] A. V. Aho, M. S. Lam, R. S. Sethi, and J. D. Ullman, *Compilers:
-    Principles, Techniques, and Tools*, 2nd ed., ch. 7 (“Run-Time
-    Environments”), Pearson/Addison-Wesley, 2006.  
+[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
+[Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf

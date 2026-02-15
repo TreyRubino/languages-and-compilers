@@ -55,7 +55,3 @@ including offsets for attributes, dispatch-table slots, and method-local frame
 sizes. The semantic environment uses hash tables for fast class and method
 lookup and stores both user-defined and internal method bodies for later
 lowering.
-
-## References  
-[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University,
-    The COOL Language Project, Jan. 2011.  

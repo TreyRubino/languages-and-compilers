@@ -76,8 +76,5 @@ never overrides or compensates for semantic errors rejected earlier in the
 pipeline.
 
 ## References  
-[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University,  
-    The COOL Language Project, Jan. 2011.  
-[2] A. V. Aho, M. S. Lam, R. S.ethi, and J. D. Ullman, *Compilers: Principles,  
-    Techniques, and Tools*, 2nd ed., ch. 6, “Intermediate-Code Generation,”  
-    Pearson/Addison-Wesley, 2006.  
+[1] “The Cool Reference Manual,” Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
+[Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf

@@ -28,15 +28,15 @@ let parent_validation ~all_classes (ast : cool_program) =
     match inherits with
     | None -> ()
     | Some (iloc, iname) ->
-        if iname = cname then (
-          Error.checker iloc "class cannot inherit from itself (%s)" cname
-        );
-        if List.mem iname forbidden then (
-          Error.checker iloc "class %s inherits from %s" cname iname
-        );
-        if not (List.mem iname all_classes) then (
-          Error.checker iloc "inheriting from undefined class %s" iname
-        )
+      if iname = cname then (
+        Error.checker iloc "class cannot inherit from itself (%s)" cname
+      );
+      if List.mem iname forbidden then (
+        Error.checker iloc "class %s inherits from %s" cname iname
+      );
+      if not (List.mem iname all_classes) then (
+        Error.checker iloc "inheriting from undefined class %s" iname
+      )
   ) ast;
   (* cycle detection / rooting at Object *)
   let find_opt h k = try Some (Hashtbl.find h k) with Not_found -> None in

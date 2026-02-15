@@ -1,5 +1,5 @@
 # Trey Rubino
-# CPSC 425 Compiler Design 1
+# CPSC 372 
 # Dr. Schwesinger
 # Compile instructions
 

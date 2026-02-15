@@ -9,6 +9,16 @@ open Lower
 open Bytecode
 open Debug
 
+(* Helper for sorting *)
+let rec depth env cname = 
+  if cname = "Object" then 0 
+  else 
+    let parent = 
+      try Hashtbl.find env.parent_map cname
+      with Not_found -> "Object"
+    in
+    1 + depth env parent
+
 let emit (env : Semantics.semantic_env) : Ir.ir =
   let st = Gen.create () in
 
@@ -35,6 +45,12 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
     Hashtbl.replace st.init_ids cname mid
   ) class_names;
 
+  (* PASS 1: Reserve all Method IDs *)
+  List.iter (fun cname ->
+    Lower.scan_method_ids st env cname
+  ) class_names;
+
+  (* PASS 2: Generate Bytecode *)
   List.iter (fun cname ->
     Lower.lower_class_group st env cname
   ) class_names;
@@ -50,5 +66,4 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
     | None -> Error.codegen "0" "Main.main not found"
   in
 
-  Gen.to_ir st entry_id 
-
+  Gen.to_ir st entry_id

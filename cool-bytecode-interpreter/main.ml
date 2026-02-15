@@ -50,7 +50,7 @@ let () =
   in
 
   (* debugging *)
-  Debug.dump_ir "debug.txt" ir;
+  (*Debug.dump_ir "debug.txt" ir;*)
 
   (* vm *)
   try 

@@ -19,7 +19,7 @@ type opcode =
   | OP_CALL
   | OP_JUMP
   | OP_JUMP_IF_FALSE
-  | OP_LOOP
+  | OP_CASE_ABORT
   | OP_ADD
   | OP_SUB
   | OP_MUL
@@ -51,7 +51,7 @@ type opcode =
   | OP_CALL -> "OP_CALL"
   | OP_JUMP -> "OP_JUMP"
   | OP_JUMP_IF_FALSE -> "OP_JUMP_IF_FALSE"
-  | OP_LOOP -> "OP_LOOP"
+  | OP_CASE_ABORT -> "OP_CASE_ABORT"
   | OP_ADD -> "OP_ADD"
   | OP_SUB -> "OP_SUB"
   | OP_MUL -> "OP_MUL"

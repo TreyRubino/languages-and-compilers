@@ -48,8 +48,8 @@ let string_of_value v =
   match v with
   | VVoid -> "void"
   | VObj o ->
-      match o.payload with
-      | PInt i -> Printf.sprintf "Int(%d)" i
-      | PBool b -> Printf.sprintf "Bool(%b)" b
-      | PString s -> Printf.sprintf "String(%s)" s
-      | PNormal -> Printf.sprintf "Obj<%d>" o.class_id
+    match o.payload with
+    | PInt i -> Printf.sprintf "Int(%d)" i
+    | PBool b -> Printf.sprintf "Bool(%b)" b
+    | PString s -> Printf.sprintf "String(%s)" s
+    | PNormal -> Printf.sprintf "Obj<%d>" o.class_id

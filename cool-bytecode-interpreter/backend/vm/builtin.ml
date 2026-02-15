@@ -62,7 +62,8 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
         | _ -> Error.vm "0" "out_int expected Int")
       | _ -> Error.vm "0" "out_int expected Int"
     in
-    print_int i; print_newline ();
+    Printf.printf "%d" i;
+    flush stdout;
     Some (VObj frame.self_obj)
 
   | "out_string" ->
@@ -79,9 +80,13 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
     Some (VObj frame.self_obj)
 
   | "in_int" ->
-    let line = read_line () in
-    let i = int_of_string line in
-    Some (Alloc.box_int st i)
+    (try 
+      let line = read_line () in
+      let clean = String.trim line in
+      let i = int_of_string clean in
+      Some (Alloc.box_int st i)
+    with _ -> 
+      Some (Alloc.box_int st 0))
 
   | "in_string" ->
     let s = read_line () in
@@ -129,4 +134,12 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
       Error.vm "0" "substr out of range";
     Some (Alloc.box_string st (String.sub base i l))
 
+  | "length" -> 
+    let s = 
+      match frame.self_obj.payload with
+      | PString s -> s
+      | _ -> Error.vm "0" "length on non-string"
+    in
+    Some (Alloc.box_int st (String.length s))
+    
   | _ -> None

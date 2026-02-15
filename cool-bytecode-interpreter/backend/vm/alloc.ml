@@ -19,7 +19,9 @@ let find_class_id (st : vm_state) (name : string) : int =
 
 let allocate_object (st : vm_state) (class_id : int) : obj =
   let cls = st.ir.classes.(class_id) in
-  let fields = Array.make (Array.length cls.attributes) VVoid in
+  let n_attrs = Array.length cls.attributes in
+  let fields = Array.make (n_attrs + 1) VVoid in
+
   let payload =
     match cls.name with
     | "Int" -> PInt 0
@@ -29,6 +31,16 @@ let allocate_object (st : vm_state) (class_id : int) : obj =
   in
   let obj = { class_id; fields; payload; marked = false; } in
   st.heap <- obj :: st.heap;
+
+  let int_class_id = find_class_id st "Int" in
+  let tag_obj = {
+    class_id = int_class_id;
+    fields = [||];
+    payload = PInt class_id;
+    marked = false;
+  } in
+  st.heap <- tag_obj :: st.heap;
+  fields.(0) <- VObj tag_obj;
   obj
 
 let allocate_and_init (st : vm_state) (class_id : int) : value =
