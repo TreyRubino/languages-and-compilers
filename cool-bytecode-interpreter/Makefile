@@ -1,7 +1,7 @@
 # Trey Rubino
 # CPSC 372 Independent Study
 # Dr. Schwesinger
-# Build instructions
+# Build instructions with built in testing rules
 
 OCAMLC = ocamlc -g
 BUILD  = build
@@ -79,7 +79,16 @@ clean:
 	rm -f $(EXEC)
 
 run: 
-	make clean && make
-	./cooli ./test/good.cl
+	make clean && make 
+	./cooli ./test/files/hs.cl
+
+regression:
+	make clean && make 
+	./scripts/regression.sh
+
+delta:
+	make clean && make 
+	./scripts/regression.sh
+	./scripts/delta.sh
 
 .PHONY: all core modules clean run

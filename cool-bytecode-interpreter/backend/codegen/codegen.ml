@@ -45,12 +45,10 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
     Hashtbl.replace st.init_ids cname mid
   ) class_names;
 
-  (* PASS 1: Reserve all Method IDs *)
   List.iter (fun cname ->
     Lower.scan_method_ids st env cname
   ) class_names;
 
-  (* PASS 2: Generate Bytecode *)
   List.iter (fun cname ->
     Lower.lower_class_group st env cname
   ) class_names;

@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# @author Trey Rubino
+# @date 02/16/2026
+
+ROOT_DIR="$(dirname "$0")/.."
+REF_DIR="$ROOT_DIR/ref/out"
+TEST_DIR="$ROOT_DIR/test/out"
+REPORT="$ROOT_DIR/delta_report.txt"
+
+rm -f "$REPORT"
+
+echo "Ref vs. Hand-rolled Delta Report " >> "$REPORT"
+echo "Generated file name delta_report.txt" >> "$REPORT"
+echo "Generated on $(date)" >> "$REPORT"
+echo "Gernerated by Trey Rubino" >> "$REPORT"
+echo "-------------------------------------------------------------------" >> "$REPORT"
+echo "" >> "$REPORT"
+
+names=()
+for f in "$TEST_DIR"/*.out; do
+  [[ -f "$f" ]] || continue
+  base="$(basename "$f")"
+  name="${base%%.out}"
+
+  skip=false
+  for n in "${names[@]}"; do
+    [[ "$n" == "$name" ]] && skip=true && break
+  done
+  $skip || names+=("$name")
+done
+
+sorted_names=($(printf '%s\n' "${names[@]}" | sort))
+
+for name in "${sorted_names[@]}"; do
+  echo "$name"
+  echo "Delta File Name: $name" >> "$REPORT"
+  echo "-------------------------------------------------------------------" >> "$REPORT"
+
+  for ext in out; do
+    test_file_out="$TEST_DIR/$name.$ext"
+    ref_file_out="$REF_DIR/$name.$ext"
+
+    if [[ ! -f "$test_file_out" && ! -f "$ref_file_out" ]]; then
+      echo " $ext - Match (both missing)" >> "$REPORT"
+      echo "" >> "$REPORT"
+      continue
+    fi
+    if [[ ! -f "$test_file_out" ]]; then
+      echo "Missing generated: $test_file_out" >> "$REPORT"
+      echo "" >> "$REPORT"
+      continue
+    fi
+    if [[ ! -f "$ref_file_out" ]]; then
+      echo "Missing refernece: $ref_file_out" >> "$REPORT"
+      echo "" >> "$REPORT"
+      continue
+    fi
+
+    diff_out=$(diff -u "$ref_file_out" "$test_file_out")
+    if [[ -z "$diff_out" ]]; then
+      echo " $ext - Match" >> "$REPORT"
+    else 
+      echo " =$ext - Differences found:" >> "$REPORT"
+      echo "$diff_out" >> "$REPORT"
+    fi
+  done
+  echo "===================================================================" >> "$REPORT"
+  echo "" >> "$REPORT"
+done;
+ 
