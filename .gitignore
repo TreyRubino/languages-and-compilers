@@ -3,6 +3,8 @@
 build/
 test/
 reference/
+ref/
 *.cl
 cooli
+coolc
 debug.txt
