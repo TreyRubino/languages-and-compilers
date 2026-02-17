@@ -81,19 +81,21 @@ let check (ast : Ast.cool_program) =
         | Some t -> t
         | None -> Hashtbl.create 1
       in
+      
+      let class_features = 
+        List.concat (List.map (fun ((_, c), _, f) -> 
+          if c = cname then f else []
+        ) ast)
+      in
+      
       let attrs =
-        Hashtbl.fold (fun name ty acc ->
-          let init =
-            match List.find_opt (function
-              | Attribute ((_, aname), _, _) when aname = name -> true
-              | _ -> false
-            ) (List.concat (List.map (fun ((_, c), _, f) -> if c = cname then f else []) ast))
-            with
-            | Some (Attribute (_, _, init_opt)) -> init_opt
-            | _ -> None
-          in
-          { aname = name; atype = ty; init } :: acc
-        ) attrs_tbl []
+        List.filter_map (function
+          | Attribute ((_, aname), _, init_opt) ->
+              (match Hashtbl.find_opt attrs_tbl aname with
+              | Some ty -> Some { aname; atype = ty; init = init_opt }
+              | None -> None)
+          | _ -> None
+        ) class_features
       in
       Hashtbl.replace env.class_map cname attrs
     ) all_classes;

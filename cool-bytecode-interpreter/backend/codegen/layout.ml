@@ -55,7 +55,7 @@ let linear_attrs (env : Semantics.semantic_env) (cls : string) : Semantics.attr_
         order := a.aname :: !order;
         Hashtbl.add table a.aname a
       )
-    ) (List.rev attrs) 
+    ) attrs 
   ) path;
 
   List.rev !order |> List.map (fun name -> Hashtbl.find table name)

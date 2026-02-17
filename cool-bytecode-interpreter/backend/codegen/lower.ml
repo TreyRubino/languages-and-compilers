@@ -27,15 +27,6 @@ let dispatch_slot env cname mname =
   in
   find 0 meths
 
-let rec linear_tags (ctx : lower_ctx)  (cname : string) =
-  let tag = Hashtbl.find ctx.st.class_ids cname in
-  let parent = 
-    try Hashtbl.find ctx.env.parent_map cname
-    with Not_found -> "Object"
-  in
-  if parent = cname then [tag]
-  else tag :: linear_tags ctx parent
-
 let rec depth env cname = 
   if cname = "Object" then 0 
   else 
@@ -239,10 +230,16 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
       local_count = ctx.frame.local_count;
     } in
     let ctx_child = { ctx with frame = fl_child } in
-    List.iter (fun ((_, vname), _, init_opt) ->
+    List.iter (fun ((_, vname), (_, tname), init_opt) ->
       let slot = Layout.allocate_local fl_child vname in
       match init_opt with
-      | None -> ()
+      | None -> 
+        (match tname with
+        | "Int" -> emit_op_i ctx.buf OP_CONST (Gen.add_const ctx.st (Ir.LInt 0))
+        | "Bool" -> emit_op ctx.buf OP_FALSE
+        | "String" -> emit_op_i ctx.buf OP_CONST (Gen.add_const ctx.st (Ir.LString ""))
+        | _ -> emit_op ctx.buf OP_VOID);
+        emit_op_i ctx.buf OP_SET_LOCAL slot
       | Some e ->
         lower_expr ctx_child e;
         emit_op_i ctx.buf OP_SET_LOCAL slot
@@ -255,12 +252,10 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     emit_op_i ctx.buf OP_SET_LOCAL s_slot;
 
     emit_op_i ctx.buf OP_GET_LOCAL s_slot;
-    
     emit_op ctx.buf OP_ISVOID;
     
     let j_not_void = mark ctx.buf in
     emit_op_i ctx.buf OP_JUMP_IF_FALSE 0;
-
     emit_op ctx.buf OP_CASE_ABORT;
 
     let match_start = mark ctx.buf in
@@ -424,7 +419,7 @@ let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : strin
       emit_op ctx.buf OP_GET_SELF;
       lower_expr ctx e;
       emit_op_i ctx.buf OP_SET_ATTR (off + 1)
-  ) attrs;
+  ) all_attrs;
 
   emit_op ctx.buf OP_GET_SELF;
   emit_op ctx.buf OP_RETURN;

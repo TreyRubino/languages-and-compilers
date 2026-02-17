@@ -80,7 +80,7 @@ clean:
 
 run: 
 	make clean && make 
-	./cooli ./test/files/hs.cl
+	./cooli ./test/files/cells.cl
 
 regression:
 	make clean && make 
