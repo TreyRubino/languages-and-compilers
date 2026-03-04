@@ -15,27 +15,47 @@ let read_file filename =
   s
 
 let () =
-  if Array.length Sys.argv < 2 then (
-    Printf.eprintf "usage: %s <file>\n" Sys.argv.(0);
+  let args = Array.to_list Sys.argv in
+  let bootstrap_mode = List.mem "-b" args in
+  let remaining_args = List.filter (fun a -> a <> "-b" && a <> Sys.argv.(0)) args in
+
+  if List.length remaining_args < 1 then (
+    Printf.eprintf "usage: %s [-b] <file>\n" Sys.argv.(0);
     exit 1
   );
 
-  let filename = Sys.argv.(1) in
-  let source = read_file filename in
+  let filename = List.hd remaining_args in
+  let semantic_env = 
+    if bootstrap_mode then (
+      if not (Filename.check_suffix filename ".cl-type") then (
+        Printf.eprintf "Error: Bootstrap mode (-b) requires a .cl-type file.\n";
+        exit 1
+      );
 
-  (* parser calls lexer on demand *)
-  let lexbuf = Lexing.from_string source in
-  let ast =
-    try Parser.cool_program Lexer.token lexbuf
-    with
-    | Error.E e -> Error.print e; exit 1
-    | Parsing.Parse_error -> Error.parser lexbuf; exit 1
-  in
+      let ic = open_in filename in
+      let env = 
+        try Bootstrap.load_bootstrap_env ic
+      with exn ->
+        close_in ic;
+        Printf.eprintf "Bootstrap error: %s\n" (Printexc.to_string exn); 
+        exit 1
+      in
+      close_in ic;
+      env
+    ) else (
+      let source = read_file filename in
 
-  (* type check *)
-  let semantic_env =
-    try Checker.check ast
-    with Error.E e -> Error.print e; exit 1
+      (* parser calls lexer on demand *)
+      let lexbuf = Lexing.from_string source in
+      let ast =
+        try Parser.cool_program Lexer.token lexbuf
+        with
+        | Error.E e -> Error.print e; exit 1
+        | Parsing.Parse_error -> Error.parser lexbuf; exit 1
+      in
+      try Checker.check ast
+      with Error.E e -> Error.print e; exit 1 
+    )
   in
 
   (* compile *)

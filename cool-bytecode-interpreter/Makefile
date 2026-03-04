@@ -40,6 +40,7 @@ OBJS = \
 	$(BUILD)/layout.cmo \
 	$(BUILD)/lower.cmo \
 	$(BUILD)/debug.cmo \
+	$(BUILD)/bootstrap.cmo \
 	$(BUILD)/codegen.cmo \
 	$(BUILD)/runtime.cmo \
 	$(BUILD)/stack.cmo \
@@ -80,7 +81,7 @@ clean:
 
 run: 
 	make clean && make 
-	./cooli ./test/files/cells.cl
+	./cooli -b ./test/good.cl-type
 
 regression:
 	make clean && make 
