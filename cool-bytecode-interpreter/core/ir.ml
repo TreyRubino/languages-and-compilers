@@ -30,6 +30,7 @@ type method_info = {
   n_locals  : int;
   n_formals : int;
   code : Bytecode.program;
+  line_map : (int * int) array;
 }
 
 type ir = {

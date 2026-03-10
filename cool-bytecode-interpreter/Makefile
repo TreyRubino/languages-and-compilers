@@ -81,7 +81,7 @@ clean:
 
 run: 
 	make clean && make 
-	./cooli -b ./test/good.cl-type
+	./cooli -b ./test/arith.cl-type
 
 regression:
 	make clean && make 

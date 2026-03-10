@@ -40,7 +40,8 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
       class_id;
       n_locals = 0;
       n_formals = 0;
-      code = [||];   (* empty, will be replaced *)
+      code = [||]; 
+      line_map = [||];  (* empty, will be replaced *)
     } in
     Hashtbl.replace st.init_ids cname mid
   ) class_names;
