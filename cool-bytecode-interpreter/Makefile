@@ -81,15 +81,15 @@ clean:
 
 run: 
 	make clean && make 
-	./cooli -b ./test/arith.cl-type
+	./cooli ./test/arith.cl
 
 regression:
 	make clean && make 
-	./scripts/regression.sh
+	./tool/regression.sh
 
 delta:
 	make clean && make 
-	./scripts/regression.sh
-	./scripts/delta.sh
+	./tool/regression.sh
+	./tool/delta.sh
 
 .PHONY: all core modules clean run

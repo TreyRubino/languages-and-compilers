@@ -1,4 +1,9 @@
-(* @author Trey Rubino *)
+(**
+@file   ast.ml
+@brief  COOL Language recursivable mutual Abstract Syntax Tree
+@author Trey Rubino
+@date   11/15/2025
+*)
 
 type static_type =
 	| Class of string

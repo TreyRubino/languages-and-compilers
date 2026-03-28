@@ -1,6 +1,10 @@
-(*
-@author Trey Rubino
-@date 11/16/2025
+(**
+  @file   lower.ml
+  @brief  Core lowering logic. Translates typed COOL expressions, methods, and
+          class bodies into IR and bytecode. Handles layout, dispatch, control
+          flow, and constructors.
+  @author Trey Rubino
+  @date   11/16/2025
 *)
 
 open Semantics
@@ -49,9 +53,11 @@ let lower_class st env cname attrs _methods =
   in
 
   let parent_id =
-    match Hashtbl.find_opt st.class_ids parent with
-    | Some pid -> pid
-    | None -> -1
+    if parent = cname then -1
+    else
+      match Hashtbl.find_opt st.class_ids parent with
+      | Some pid -> pid
+      | None -> -1
   in
 
   (* attributes *)
@@ -253,7 +259,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
 
     emit_op_i ctx.buf OP_GET_LOCAL s_slot expr.loc;
     emit_op ctx.buf OP_ISVOID expr.loc;
-    
+
     let j_not_void = mark ctx.buf in
     emit_op_i ctx.buf OP_JUMP_IF_FALSE 0 expr.loc;
     emit_op ctx.buf OP_CASE_ABORT expr.loc;
@@ -261,13 +267,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     let match_start = mark ctx.buf in
     patch ctx.buf j_not_void OP_JUMP_IF_FALSE (OffsetArg (match_start - j_not_void - 1));
 
-    (* load dynamic class tag into a new local frame slot *)
-    let t_slot = Layout.allocate_local ctx.frame "_tag" in
-    emit_op_i ctx.buf OP_GET_LOCAL s_slot expr.loc;
-    emit_op_i ctx.buf OP_GET_ATTR 0 expr.loc;
-    emit_op_i ctx.buf OP_SET_LOCAL t_slot expr.loc;
-
-    (* sort the branches deepest first *)
+    (* sort the branches deepest first so more specific types are tried before ancestors *)
     let sorted = 
       List.sort (fun ((_, _), (_, t1), _) ((_, _), (_, t2), _) -> 
         compare (depth ctx.env t2) (depth ctx.env t1)
@@ -276,34 +276,32 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
 
     let end_jumps = ref [] in
 
-    (* Iterate branches and chain them *)
+    (* iterate branches: use OP_IS_SUBTYPE to walk the parent_id chain at runtime *)
     List.iter (fun ((_, vname), (_, tname), br) ->
-      let branch_tag = Hashtbl.find ctx.st.class_ids tname in
-      let tag_const_id = Gen.add_const ctx.st (Ir.LInt branch_tag) in
-            
-      emit_op_i ctx.buf OP_GET_LOCAL t_slot expr.loc;
-      emit_op_i ctx.buf OP_CONST tag_const_id expr.loc;
-      emit_op ctx.buf OP_EQUAL expr.loc;
-      
+      let branch_cid = Hashtbl.find ctx.st.class_ids tname in
+
+      emit_op_i ctx.buf OP_GET_LOCAL s_slot expr.loc;
+      emit_op_i ctx.buf OP_IS_SUBTYPE branch_cid expr.loc;
+
       let j_next = mark ctx.buf in
       emit_op_i ctx.buf OP_JUMP_IF_FALSE 0 expr.loc;
-      
+
       let slot = Layout.allocate_local ctx.frame vname in
       emit_op_i ctx.buf OP_GET_LOCAL s_slot expr.loc;
       emit_op_i ctx.buf OP_SET_LOCAL slot expr.loc;
-      
+
       lower_expr ctx br;
-      
+
       let j_end = mark ctx.buf in
       emit_op_i ctx.buf OP_JUMP 0 expr.loc;
       end_jumps := j_end :: !end_jumps;
-      
+
       patch ctx.buf j_next OP_JUMP_IF_FALSE (OffsetArg (mark ctx.buf - j_next - 1));
-      
+
     ) sorted;
-    
+
     emit_op ctx.buf OP_CASE_ABORT expr.loc;
-    
+
     let end_pos = mark ctx.buf in
     List.iter (fun j -> patch ctx.buf j OP_JUMP (OffsetArg (end_pos - j - 1))) !end_jumps
 
@@ -394,20 +392,9 @@ let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : strin
     | [] -> "0" 
   in
 
-  let parent =
-    match Hashtbl.find_opt env.parent_map cname with
-    | Some p -> p
-    | None -> "Object"
-  in
-  if parent <> cname then (
-    match Hashtbl.find_opt st.init_ids parent with
-    | None -> ()
-    | Some parent_init_mid ->
-      emit_op ctx.buf OP_GET_SELF loc;
-      emit_op_i ctx.buf OP_CALL parent_init_mid loc;
-      emit_op ctx.buf OP_POP loc
-  );
-
+  (* flat init: emit all inherited + own attribute initializers in linearized
+     order with no parent constructor calls. this avoids re-entrant construction
+     when attribute initializers allocate objects of ancestor/descendant types. *)
   let all_attrs = linear_attrs env cname in
   let offset_of_attr aname =
     let rec find i = function
@@ -433,7 +420,7 @@ let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : strin
   {
     name = "__init_" ^ cname;
     class_id = Hashtbl.find st.class_ids cname;
-    n_locals = 0;
+    n_locals = !(frame.local_count);
     n_formals = 0;
     code = Emit.to_program buf;
     line_map = Emit.get_line_map buf;

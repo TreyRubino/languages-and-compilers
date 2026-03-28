@@ -1,6 +1,10 @@
-(*
+(**
+@file   bytecode.ml
+@brief  Declares the full instruction set architecture (ISA) for the COOL VM,
+        including opcodes, operands, instruction records, and program
+        representations. Used by the code generator and VM.
 @author Trey Rubino
-@date 11/15/2025
+@date   11/15/2025
 *)
 
 type opcode =
@@ -30,6 +34,7 @@ type opcode =
   | OP_LESS
   | OP_LESS_EQUAL
   | OP_ISVOID
+  | OP_IS_SUBTYPE
   | OP_DISPATCH
   | OP_STATIC_DISPATCH
   | OP_RETURN
@@ -62,6 +67,7 @@ type opcode =
   | OP_LESS -> "OP_LESS"
   | OP_LESS_EQUAL -> "OP_LESS_EQUAL"
   | OP_ISVOID -> "OP_ISVOID"
+  | OP_IS_SUBTYPE -> "OP_IS_SUBTYPE"
   | OP_DISPATCH -> "OP_DISPATCH"
   | OP_STATIC_DISPATCH -> "OP_STATIC_DISPATCH"
   | OP_RETURN -> "OP_RETURN"

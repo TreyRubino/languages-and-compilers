@@ -1,6 +1,10 @@
-(*
+(**
+@file   exec.ml
+@brief  Core execution engine that interprets bytecode instructions, updates
+        the program counter, manages frames, handles dispatch, applies
+        arithmetic and boolean operations, and evaluates all runtime behaviors.
 @author Trey Rubino
-@date 11/30/2025
+@date   11/30/2025
 *)
 
 open Runtime
@@ -266,6 +270,24 @@ let run (st : vm_state) : value =
       let is_v = match v with VVoid -> true | _ -> false in
       Stack.push_val st (Alloc.box_bool st is_v);
       loop ()
+
+    | OP_IS_SUBTYPE ->
+      (match instr.arg with
+      | IntArg target_cid ->
+        let v = Stack.pop_val st in
+        let actual_cid =
+          match v with
+          | VObj o -> o.class_id
+          | VVoid -> Error.vm (get_line_number frame) "IS_SUBTYPE on void"
+        in
+        let rec is_sub cid =
+          if cid = target_cid then true
+          else if cid < 0 then false
+          else is_sub st.ir.classes.(cid).parent_id
+        in
+        Stack.push_val st (Alloc.box_bool st (is_sub actual_cid));
+        loop ()
+      | _ -> Error.vm (get_line_number frame) "IS_SUBTYPE missing IntArg")
 
     | OP_CALL ->
       (match instr.arg with

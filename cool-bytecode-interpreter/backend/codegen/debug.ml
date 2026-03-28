@@ -1,6 +1,9 @@
-(*
+(**
+@file   debug.ml
+@brief  Tools for generating readable dumps of class layouts, dispatch
+        tables, constants, and bytecode.
 @author Trey Rubino
-@date 11/30/2025
+@date   11/30/2025
 *)
 
 open Printf
@@ -33,6 +36,7 @@ let string_of_opcode = function
   | OP_LESS -> "LESS"
   | OP_LESS_EQUAL -> "LESS_EQUAL"
   | OP_ISVOID -> "ISVOID"
+  | OP_IS_SUBTYPE -> "IS_SUBTYPE"
   | OP_DISPATCH -> "DISPATCH"
   | OP_STATIC_DISPATCH -> "STATIC_DISPATCH"
   | OP_RETURN -> "RETURN"
