@@ -1,12 +1,12 @@
 # Trey Rubino
 # CPSC 372 Independent Study
 # Dr. Schwesinger
-# Codegen build
+# VM build
 
 OCAMLC = ocamlc -g
-BUILD = ../../build
+BUILD  = ../../../build
 
-ML = emit.ml gen.ml layout.ml lower.ml debug.ml codegen.ml bootstrap.ml
+ML = runtime.ml strings.ml heap.ml gc.ml stack.ml alloc.ml builtin.ml exec.ml vm.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))
 
 all: $(BUILD) $(CMO)

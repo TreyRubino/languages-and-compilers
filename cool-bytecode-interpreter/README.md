@@ -1,4 +1,4 @@
-# COOL Compiler & Virtual Machine  
+# COOL Bytecode Compiler & Virtual Machine  
 Trey Rubino -  
 CPSC 372 Independent Study -  
 Dr. Schwesinger  
@@ -36,7 +36,7 @@ pipeline.
 - `tests/`: Validation programs, IR dumps, and execution tests used during
   development, including a dedicated GC stress test.  
 - `main.ml`: Entry point that wires together the frontend and backend, invokes
-  each compilation stage, and runs the generated IR through the VM.  
+  each compilation stage, and runs the generated IR through the VM (in core/).  
 
 ## Overview  
 This repository implements the full COOL toolchain — from raw source text to

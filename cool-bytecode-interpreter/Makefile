@@ -6,19 +6,19 @@
 OCAMLC = ocamlc -g
 BUILD  = build
 
-CORE    = core
+CORE    = lib/core
 
-LEXER   = frontend/lexer
-PARSER  = frontend/parser
-CHECKER = frontend/checker
+LEXER   = lib/frontend/lexer
+PARSER  = lib/frontend/parser
+CHECKER = lib/frontend/checker
 
-CODEGEN = backend/codegen
-VM = backend/vm
+CODEGEN = lib/backend/codegen
+VM = lib/backend/vm
 
 CORE_SRC = $(CORE)/error.ml $(CORE)/ast.ml $(CORE)/semantics.ml $(CORE)/bytecode.ml $(CORE)/ir.ml 
 CORE_CMO = $(BUILD)/error.cmo $(BUILD)/ast.cmo $(BUILD)/semantics.cmo $(BUILD)/bytecode.cmo $(BUILD)/ir.cmo
 
-MAIN = main.ml
+MAIN = lib/core/main.ml
 MAIN_CMO = $(BUILD)/main.cmo
 
 EXEC = cooli

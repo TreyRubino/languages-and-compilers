@@ -5,7 +5,7 @@
 
 OCAMLYACC = ocamlyacc
 OCAMLC    = ocamlc -g
-BUILD     = ../../build
+BUILD     = ../../../build
 
 PARSER_MLY = parser.mly
 YACC_BASE  = $(BUILD)/parser

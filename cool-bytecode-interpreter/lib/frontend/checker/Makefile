@@ -3,7 +3,7 @@
 # Dr. Schwesinger
 
 OCAMLC = ocamlc -g
-BUILD  = ../../build
+BUILD  = ../../../build
 
 ML  = env.ml typecheck.ml validate.ml checker.ml
 CMO = $(addprefix $(BUILD)/,$(ML:.ml=.cmo))

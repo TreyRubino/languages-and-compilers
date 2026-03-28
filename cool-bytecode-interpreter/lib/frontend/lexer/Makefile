@@ -5,7 +5,7 @@
 
 OCAMLLEX = ocamllex
 OCAMLC   = ocamlc -g
-BUILD = ../../build
+BUILD    = ../../../build
 
 MAIN_MLL = lexer.mll
 GEN_ML   = $(BUILD)/lexer.ml
