@@ -1,6 +1,12 @@
-(*
-@author Trey Rubino
-@date 12/02/2025
+(**
+  @file   builtin.ml
+  @brief  Handles all built-in COOL methods such as abort, copy, type_name,
+          I/O routines, and string operations. Dispatches these before normal
+          bytecode execution. Integer and boolean return values are unboxed.
+          String content is read from the parallel string table via the
+          StrIdx stored in String object field[0].
+  @author Trey Rubino
+  @date   12/02/2025
 *)
 
 open Runtime
@@ -29,117 +35,93 @@ let unescape (s : string) : string =
   loop 0;
   Buffer.contents buf
 
+(* retrieve the string content of the String object at slab offset ptr. *)
+let get_string (st : vm_state) (ptr : int) : string =
+  let idx = Heap.get_str_field st.heap ptr in
+  st.strings.data.(idx)
+
 let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
-  let m = frame.method_info in 
-  match m.name with 
-  | "abort" -> 
+  let m = frame.method_info in
+  match m.name with
+
+  | "abort" ->
     Printf.printf "abort\n"; exit 1
 
   | "copy" ->
-    let obj = frame.self_obj in
-    let fields = Array.copy obj.fields in
-    let new_obj = {
-      class_id = obj.class_id;
-      fields;
-      payload = obj.payload;
-      marked = false;
-    } in
-    st.heap <- new_obj :: st.heap;
-    Some (VObj new_obj)
+    if Heap.needs_gc st.heap then Gc.collect st;
+    let p    = frame.self_ptr in
+    let cid  = Heap.class_id st.heap p in
+    let size = Heap.total_size st.heap p in
+    let new_p = Heap.alloc st.heap cid (size - 2) in
+    (* copy all field words verbatim, including any StrIdx in String objects *)
+    for i = 2 to size - 1 do
+      st.heap.slab.{new_p + i} <- st.heap.slab.{p + i}
+    done;
+    Some (VPtr new_p)
 
   | "type_name" ->
-    let cid = frame.self_obj.class_id in
+    let cid   = Heap.class_id st.heap frame.self_ptr in
     let cname = st.ir.classes.(cid).name in
-    Some (Alloc.box_string st cname)
+    Some (VPtr (Alloc.allocate_string st cname))
 
   | "out_int" ->
-    let v = frame.locals.(0) in
     let i =
-      match v with
-      | VObj o ->
-        (match o.payload with
-        | PInt i -> i
-        | _ -> Error.vm "0" "out_int expected Int")
-      | _ -> Error.vm "0" "out_int expected Int"
+      match frame.locals.(0) with
+      | VInt i -> i
+      | _      -> Error.vm "0" "out_int expected Int"
     in
     Printf.printf "%d" i;
     flush stdout;
-    Some (VObj frame.self_obj)
+    Some (VPtr frame.self_ptr)
 
   | "out_string" ->
-    let v = frame.locals.(0) in
     let s =
-      match v with
-      | VObj o ->
-        (match o.payload with
-        | PString s -> s
-        | _ -> Error.vm "0" "out_string expected String")
-      | _ -> Error.vm "0" "out_string expected String"
+      match frame.locals.(0) with
+      | VPtr p -> get_string st p
+      | _      -> Error.vm "0" "out_string expected String"
     in
     Printf.printf "%s" (unescape s);
-    Some (VObj frame.self_obj)
+    flush stdout;
+    Some (VPtr frame.self_ptr)
 
   | "in_int" ->
-    (try 
-      let line = read_line () in
-      let clean = String.trim line in
-      let i = int_of_string clean in
-      Some (Alloc.box_int st i)
-    with _ -> 
-      Some (Alloc.box_int st 0))
+    let i =
+      try int_of_string (String.trim (read_line ()))
+      with _ -> 0
+    in
+    Some (VInt i)
 
   | "in_string" ->
     let s = read_line () in
-    Some (Alloc.box_string st s)
+    Some (VPtr (Alloc.allocate_string st s))
 
   | "concat" ->
-    let arg =
+    let base = get_string st frame.self_ptr in
+    let arg  =
       match frame.locals.(0) with
-      | VObj o ->
-        (match o.payload with
-        | PString s -> s
-        | _ -> Error.vm "0" "concat expected String argument")
-      | _ ->
-        Error.vm "0" "concat expected String argument"
+      | VPtr p -> get_string st p
+      | _      -> Error.vm "0" "concat expected String argument"
     in
-    (match frame.self_obj.payload with
-    | PString base ->
-      Some (Alloc.box_string st (base ^ arg))
-    | _ ->
-      Error.vm "0" "concat on non-string")
+    Some (VPtr (Alloc.allocate_string st (base ^ arg)))
 
   | "substr" ->
-    let base =
-      match frame.self_obj.payload with
-      | PString s -> s
-      | _ -> Error.vm "0" "substr on non-string"
-    in
+    let base = get_string st frame.self_ptr in
     let i =
       match frame.locals.(0) with
-      | VObj o ->
-        (match o.payload with
-        | PInt n -> n
-        | _ -> Error.vm "0" "substr expected Int index")
-      | _ -> Error.vm "0" "substr expected Int index"
+      | VInt n -> n
+      | _      -> Error.vm "0" "substr expected Int index"
     in
     let l =
       match frame.locals.(1) with
-      | VObj o ->
-        (match o.payload with
-        | PInt n -> n
-        | _ -> Error.vm "0" "substr expected Int length")
-      | _ -> Error.vm "0" "substr expected Int length"
+      | VInt n -> n
+      | _      -> Error.vm "0" "substr expected Int length"
     in
     if i < 0 || l < 0 || i + l > String.length base then
       Error.vm "0" "substr out of range";
-    Some (Alloc.box_string st (String.sub base i l))
+    Some (VPtr (Alloc.allocate_string st (String.sub base i l)))
 
-  | "length" -> 
-    let s = 
-      match frame.self_obj.payload with
-      | PString s -> s
-      | _ -> Error.vm "0" "length on non-string"
-    in
-    Some (Alloc.box_int st (String.length s))
-    
+  | "length" ->
+    let s = get_string st frame.self_ptr in
+    Some (VInt (String.length s))
+
   | _ -> None

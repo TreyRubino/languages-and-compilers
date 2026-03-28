@@ -1,10 +1,13 @@
 (**
-@file   exec.ml
-@brief  Core execution engine that interprets bytecode instructions, updates
-        the program counter, manages frames, handles dispatch, applies
-        arithmetic and boolean operations, and evaluates all runtime behaviors.
-@author Trey Rubino
-@date   11/30/2025
+  @file   exec.ml
+  @brief  Core execution engine that interprets bytecode instructions over
+          the raw word slab. Integers and booleans are unboxed; no allocation
+          occurs for arithmetic, comparison, or boolean operations. Field
+          access, dispatch, and new-object instructions go through the slab
+          allocator and heap accessors. The GC is triggered implicitly by
+          Alloc.allocate_object whenever the bump pointer reaches threshold.
+  @author Trey Rubino
+  @date   11/30/2025
 *)
 
 open Runtime
@@ -17,53 +20,57 @@ open Error
 
 let get_line_number (f : frame) : string =
   let pc = f.pc in
-  let m = f.method_info in 
+  let m  = f.method_info in
   let best_line = ref 0 in
-  Array.iter (fun (start_pc, line) -> 
+  Array.iter (fun (start_pc, line) ->
     if pc >= start_pc then best_line := line
   ) m.line_map;
   if !best_line = 0 then "unknown" else string_of_int !best_line
 
-let to_int32 (x : int) : int = 
+let to_int32 (x : int) : int =
   Int32.to_int (Int32.of_int x)
 
-let expect_int (v : value) (f : frame): int =
-  match v with 
-  | VObj o -> 
-    (match o.payload with
-    | PInt i -> i
-    | _ -> Error.vm (get_line_number f) "expected Int object")
-  | VVoid ->
-    Error.vm (get_line_number f) "expected Int object (void)"
+let expect_int (v : value) (f : frame) : int =
+  match v with
+  | VInt i -> i
+  | VVoid  -> Error.vm (get_line_number f) "expected Int (void)"
+  | _      -> Error.vm (get_line_number f) "expected Int"
 
 let expect_bool (v : value) (f : frame) : bool =
   match v with
-  | VObj o ->
-    (match o.payload with
-    | PBool b -> b
-    | _ -> Error.vm (get_line_number f) "expected Bool object")
-  | VVoid ->
-    Error.vm (get_line_number f) "expected Bool object (void)"
+  | VBool b -> b
+  | VVoid   -> Error.vm (get_line_number f) "expected Bool (void)"
+  | _       -> Error.vm (get_line_number f) "expected Bool"
 
-let const_of_value (st : vm_state) = function
-  | LInt i -> Alloc.box_int st i
-  | LBool b -> Alloc.box_bool st b
-  | LString s -> Alloc.box_string st s
-  | LVoid -> VVoid
+let expect_ptr (v : value) (f : frame) (ctx : string) : int =
+  match v with
+  | VPtr p -> p
+  | VVoid  -> Error.vm (get_line_number f) "%s: receiver is void" ctx
+  | _      -> Error.vm (get_line_number f) "%s: expected object" ctx
+
+(* convert a constant-table literal to a runtime value.
+   integers and booleans are unboxed. strings allocate a String heap object
+   and intern the content in the string table. *)
+let const_of_lit (st : vm_state) : Ir.literal -> value = function
+  | LInt i    -> VInt i
+  | LBool b   -> VBool b
+  | LString s -> VPtr (Alloc.allocate_string st s)
+  | LVoid     -> VVoid
 
 let run (st : vm_state) : value =
   let rec loop () =
     let frame =
       match st.frames with
       | f :: _ -> f
-      | [] -> Error.vm "0" "run called with no active frame"
+      | []     -> Error.vm "0" "run called with no active frame"
     in
     let code = frame.method_info.code in
-    if frame.pc < 0 || frame.pc >= Array.length code 
-      then Error.vm "0" "pc out of bounds %d" frame.pc;
+    if frame.pc < 0 || frame.pc >= Array.length code then
+      Error.vm "0" "pc out of bounds %d" frame.pc;
     let instr = code.(frame.pc) in
     frame.pc <- frame.pc + 1;
     match instr.op with
+
     | OP_POP ->
       ignore (Stack.pop_val st);
       loop ()
@@ -71,17 +78,17 @@ let run (st : vm_state) : value =
     | OP_CONST ->
       (match instr.arg with
       | IntArg idx ->
-        Stack.push_val st (const_of_value st st.ir.consts.(idx))
+        Stack.push_val st (const_of_lit st st.ir.consts.(idx));
+        loop ()
       | _ ->
-        Error.vm (get_line_number frame) "CONST missing IntArg");
-      loop ()
+        Error.vm (get_line_number frame) "CONST missing IntArg")
 
     | OP_TRUE ->
-      Stack.push_val st (Alloc.box_bool st true);
+      Stack.push_val st (VBool true);
       loop ()
 
     | OP_FALSE ->
-      Stack.push_val st (Alloc.box_bool st false);
+      Stack.push_val st (VBool false);
       loop ()
 
     | OP_VOID ->
@@ -91,75 +98,55 @@ let run (st : vm_state) : value =
     | OP_GET_LOCAL ->
       (match instr.arg with
       | IntArg slot ->
-        let v = Stack.get_local st slot in
-        Stack.push_val st v
+        Stack.push_val st (Stack.get_local st slot);
+        loop ()
       | _ ->
-        Error.vm (get_line_number frame) "GET_LOCAL missing IntArg");
-      loop ()
+        Error.vm (get_line_number frame) "GET_LOCAL missing IntArg")
 
     | OP_SET_LOCAL ->
       (match instr.arg with
       | IntArg slot ->
-        let v = Stack.pop_val st in
-        Stack.set_local st slot v;
+        Stack.set_local st slot (Stack.pop_val st);
+        loop ()
       | _ ->
-        Error.vm (get_line_number frame) "SET_LOCAL missing IntArg");
-      loop ()
+        Error.vm (get_line_number frame) "SET_LOCAL missing IntArg")
 
     | OP_GET_SELF ->
-      let self =
-        match st.frames with
-        | f :: _ -> f.self_obj
-        | [] -> Error.vm (get_line_number frame) "GET_SELF no frame"
-      in
-      Stack.push_val st (VObj self);
+      Stack.push_val st (VPtr frame.self_ptr);
       loop ()
 
     | OP_GET_ATTR ->
       (match instr.arg with
       | IntArg off ->
-        let recv =
-          match Stack.pop_val st with
-          | VObj o -> o
-          | _ -> Error.vm (get_line_number frame) "GET_ATTR on non object"
-        in
-        Stack.push_val st (Array.get recv.fields off)
+        let p = expect_ptr (Stack.pop_val st) frame "GET_ATTR" in
+        (* bytecode uses offset+1 to skip the old tag slot; field index = off-1 *)
+        Stack.push_val st (Heap.get_field st.heap p (off - 1));
+        loop ()
       | _ ->
-        Error.vm (get_line_number frame) "GET_ATTR missing IntArg");
-      loop ()
+        Error.vm (get_line_number frame) "GET_ATTR missing IntArg")
 
     | OP_SET_ATTR ->
       (match instr.arg with
       | IntArg off ->
         let v = Stack.pop_val st in
-        let recv =
-          match Stack.pop_val st with
-          | VObj o -> o
-          | _ -> Error.vm (get_line_number frame) "SET_ATTR on non-object"
-        in
-        Array.set recv.fields off v;
+        let p = expect_ptr (Stack.pop_val st) frame "SET_ATTR" in
+        Heap.set_field st.heap p (off - 1) v;
+        loop ()
       | _ ->
-        Error.vm (get_line_number frame) "SET_ATTR missing IntArg");
-      loop ()
+        Error.vm (get_line_number frame) "SET_ATTR missing IntArg")
 
     | OP_NEW ->
       (match instr.arg with
       | IntArg cid ->
-        let o = Alloc.allocate_object st cid in
-        Stack.push_val st (VObj o);
+        let p = Alloc.allocate_object st cid in
+        Stack.push_val st (VPtr p);
         loop ()
       | _ ->
         Error.vm (get_line_number frame) "NEW missing IntArg")
 
     | OP_NEW_SELF_TYPE ->
-      let self =
-        match st.frames with
-        | f :: _ -> f.self_obj
-        | [] -> Error.vm (get_line_number frame) "NEW_SELF_TYPE no frame"
-      in
-      let cid = self.class_id in
-      let o = Alloc.allocate_object st cid in
-      let cls = st.ir.classes.(cid) in
+      let cid       = Heap.class_id st.heap frame.self_ptr in
+      let cls       = st.ir.classes.(cid) in
       let init_name = "__init_" ^ cls.name in
       let rec find_init i =
         if i >= Array.length st.ir.methods then
@@ -168,145 +155,130 @@ let run (st : vm_state) : value =
         else find_init (i + 1)
       in
       let init_mid = find_init 0 in
-      Stack.push_frame st o init_mid [];
+      let new_p    = Alloc.allocate_object st cid in
+      Stack.push_frame st new_p init_mid [];
       loop ()
 
     | OP_JUMP ->
-      (match instr.arg with 
-      | IntArg offset | OffsetArg offset -> 
+      (match instr.arg with
+      | IntArg offset | OffsetArg offset ->
         frame.pc <- frame.pc + offset;
         loop ()
       | _ -> Error.vm (get_line_number frame) "JUMP missing offset")
 
     | OP_JUMP_IF_FALSE ->
       (match instr.arg with
-      | IntArg offset | OffsetArg offset -> 
-        let v = Stack.pop_val st in
-        let b = 
-          match v with 
-          | VObj o -> 
-            (match o.payload with
-            | PBool b -> b
-            | _ -> Error.vm (get_line_number frame) "jump predicate not boolean")
-          | VVoid -> Error.vm (get_line_number frame) "jump predicate void"
-        in
-        if not b then (
-          frame.pc <- frame.pc + offset
-        ); 
+      | IntArg offset | OffsetArg offset ->
+        let b = expect_bool (Stack.pop_val st) frame in
+        if not b then frame.pc <- frame.pc + offset;
         loop ()
       | _ -> Error.vm (get_line_number frame) "JUMP_IF_FALSE missing offset")
 
-    | OP_CASE_ABORT -> 
+    | OP_CASE_ABORT ->
       Error.vm (get_line_number frame) "case statement without matching branch"
 
     | OP_ADD ->
-      let rhs_i = expect_int (Stack.pop_val st) frame in
-      let lhs_i = expect_int (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_int st (to_int32 (lhs_i + rhs_i)));
+      let rhs = expect_int (Stack.pop_val st) frame in
+      let lhs = expect_int (Stack.pop_val st) frame in
+      Stack.push_val st (VInt (to_int32 (lhs + rhs)));
       loop ()
 
     | OP_SUB ->
       let rhs = expect_int (Stack.pop_val st) frame in
       let lhs = expect_int (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_int st (to_int32 (lhs - rhs)));
+      Stack.push_val st (VInt (to_int32 (lhs - rhs)));
       loop ()
 
     | OP_MUL ->
       let rhs = expect_int (Stack.pop_val st) frame in
       let lhs = expect_int (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_int st (to_int32 (lhs * rhs)));
+      Stack.push_val st (VInt (to_int32 (lhs * rhs)));
       loop ()
 
     | OP_DIV ->
       let rhs = expect_int (Stack.pop_val st) frame in
       let lhs = expect_int (Stack.pop_val st) frame in
       if rhs = 0 then Error.vm (get_line_number frame) "division by zero";
-      Stack.push_val st (Alloc.box_int st (to_int32 (lhs / rhs)));
+      Stack.push_val st (VInt (to_int32 (lhs / rhs)));
       loop ()
 
     | OP_NEG ->
       let i = expect_int (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_int st (to_int32 (-i)));
+      Stack.push_val st (VInt (to_int32 (-i)));
       loop ()
 
     | OP_NOT ->
       let b = expect_bool (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_bool st (not b));
+      Stack.push_val st (VBool (not b));
       loop ()
 
     | OP_EQUAL ->
       let rhs = Stack.pop_val st in
       let lhs = Stack.pop_val st in
-      let eq = 
+      let eq =
         match lhs, rhs with
-        | VVoid, VVoid -> true
-        | VVoid, _ -> false
-        | _, VVoid -> false
-
-        | VObj o1, VObj o2 -> 
-          match o1.payload, o2.payload with
-          | PInt lhs_i, PInt rhs_i -> lhs_i = rhs_i
-          | PBool lhs_b, PBool rhs_b -> lhs_b = rhs_b
-          | PString lhs_s, PString rhs_s -> lhs_s = rhs_s
-          | _ -> o1 == o2 (* physical equality checks address eqaulity *)
-      in 
-      Stack.push_val st (Alloc.box_bool st eq);
+        | VVoid,   VVoid   -> true
+        | VVoid,   _       -> false
+        | _,       VVoid   -> false
+        | VInt a,  VInt b  -> a = b
+        | VBool a, VBool b -> a = b
+        | VPtr a,  VPtr b  ->
+          let cid = Heap.class_id st.heap a in
+          let cls = st.ir.classes.(cid) in
+          if cls.name = "String" then
+            (* string equality is structural *)
+            let sa = st.strings.data.(Heap.get_str_field st.heap a) in
+            let sb = st.strings.data.(Heap.get_str_field st.heap b) in
+            sa = sb
+          else
+            (* object equality is pointer (identity) equality *)
+            a = b
+        | _, _ -> false
+      in
+      Stack.push_val st (VBool eq);
       loop ()
 
     | OP_LESS ->
       let rhs = expect_int (Stack.pop_val st) frame in
       let lhs = expect_int (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_bool st (lhs < rhs));
+      Stack.push_val st (VBool (lhs < rhs));
       loop ()
 
     | OP_LESS_EQUAL ->
       let rhs = expect_int (Stack.pop_val st) frame in
       let lhs = expect_int (Stack.pop_val st) frame in
-      Stack.push_val st (Alloc.box_bool st (lhs <= rhs));
+      Stack.push_val st (VBool (lhs <= rhs));
       loop ()
 
     | OP_ISVOID ->
       let v = Stack.pop_val st in
-      let is_v = match v with VVoid -> true | _ -> false in
-      Stack.push_val st (Alloc.box_bool st is_v);
+      Stack.push_val st (VBool (v = VVoid));
       loop ()
 
     | OP_IS_SUBTYPE ->
       (match instr.arg with
       | IntArg target_cid ->
-        let v = Stack.pop_val st in
-        let actual_cid =
-          match v with
-          | VObj o -> o.class_id
-          | VVoid -> Error.vm (get_line_number frame) "IS_SUBTYPE on void"
-        in
+        let p = expect_ptr (Stack.pop_val st) frame "IS_SUBTYPE" in
+        let actual_cid = Heap.class_id st.heap p in
         let rec is_sub cid =
           if cid = target_cid then true
           else if cid < 0 then false
           else is_sub st.ir.classes.(cid).parent_id
         in
-        Stack.push_val st (Alloc.box_bool st (is_sub actual_cid));
+        Stack.push_val st (VBool (is_sub actual_cid));
         loop ()
       | _ -> Error.vm (get_line_number frame) "IS_SUBTYPE missing IntArg")
 
     | OP_CALL ->
       (match instr.arg with
       | IntArg mid ->
-        let m = st.ir.methods.(mid) in
-        let nargs = m.n_formals in
-
-        let recv =
-          match Stack.pop_val st with
-          | VObj o -> o
-          | _ -> Error.vm (get_line_number frame) "CALL without object receiver"
-        in
-
+        let m    = st.ir.methods.(mid) in
+        let recv = expect_ptr (Stack.pop_val st) frame "CALL" in
         let rec pop_args acc n =
           if n = 0 then acc
           else pop_args (Stack.pop_val st :: acc) (n - 1)
         in
-        let args = pop_args [] nargs in
-
+        let args = pop_args [] m.n_formals in
         Stack.push_frame st recv mid args;
         loop ()
       | _ ->
@@ -315,22 +287,16 @@ let run (st : vm_state) : value =
     | OP_DISPATCH ->
       (match instr.arg with
       | IntArg slot ->
-        let recv = 
-          match Stack.pop_val st with
-          | VObj o -> o
-          | _ -> Error.vm (get_line_number frame) "dispatch on non-object"
-        in
-
-        let cls = st.ir.classes.(recv.class_id) in
-        let mid = cls.dispatch.(slot) in
-        let m = st.ir.methods.(mid) in
-        let nargs = m.n_formals in
-
+        let recv = expect_ptr (Stack.pop_val st) frame "DISPATCH" in
+        let cid  = Heap.class_id st.heap recv in
+        let cls  = st.ir.classes.(cid) in
+        let mid  = cls.dispatch.(slot) in
+        let m    = st.ir.methods.(mid) in
         let rec pop_args acc n =
           if n = 0 then acc
-          else pop_args (Stack.pop_val st :: acc) (n-1)
+          else pop_args (Stack.pop_val st :: acc) (n - 1)
         in
-        let args = pop_args [] nargs in
+        let args = pop_args [] m.n_formals in
         Stack.push_frame st recv mid args;
         loop ()
       | _ -> Error.vm (get_line_number frame) "DISPATCH missing IntArg")
@@ -338,21 +304,13 @@ let run (st : vm_state) : value =
     | OP_STATIC_DISPATCH ->
       (match instr.arg with
       | IntArg mid ->
-        let recv = 
-          match Stack.pop_val st with
-          | VObj o -> o 
-          | _ -> Error.vm (get_line_number frame) "STATIC_DISPATCH missing receiver"
-        in
-
-        let m = st.ir.methods.(mid) in
-        let nargs = m.n_formals in
-
-        (* pop args first *)
+        let recv = expect_ptr (Stack.pop_val st) frame "STATIC_DISPATCH" in
+        let m    = st.ir.methods.(mid) in
         let rec pop_args acc n =
           if n = 0 then acc
-          else pop_args (Stack.pop_val st :: acc) (n-1)
+          else pop_args (Stack.pop_val st :: acc) (n - 1)
         in
-        let args = pop_args [] nargs in
+        let args = pop_args [] m.n_formals in
         Stack.push_frame st recv mid args;
         loop ()
       | _ -> Error.vm (get_line_number frame) "STATIC_DISPATCH missing IntArg")
@@ -361,8 +319,8 @@ let run (st : vm_state) : value =
       let frame =
         match st.frames with
         | f :: _ -> f
-        | [] -> Error.vm (get_line_number frame) "RETURN with no frame"
-      in      
+        | []     -> Error.vm (get_line_number frame) "RETURN with no frame"
+      in
       (match Builtin.maybe_handle_builtin st frame with
       | Some v ->
         ignore (Stack.pop_frame st);

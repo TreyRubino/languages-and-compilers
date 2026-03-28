@@ -25,16 +25,16 @@ EXEC = cooli
 
 OBJS = \
 	$(BUILD)/error.cmo \
-  $(BUILD)/ast.cmo \
+  	$(BUILD)/ast.cmo \
 	$(BUILD)/semantics.cmo \
 	$(BUILD)/bytecode.cmo \
 	$(BUILD)/ir.cmo \
-  $(BUILD)/lexer.cmo \
-  $(BUILD)/parser.cmo \
-  $(BUILD)/env.cmo \
-  $(BUILD)/validate.cmo \
-  $(BUILD)/typecheck.cmo \
-  $(BUILD)/checker.cmo \
+  	$(BUILD)/lexer.cmo \
+  	$(BUILD)/parser.cmo \
+  	$(BUILD)/env.cmo \
+  	$(BUILD)/validate.cmo \
+  	$(BUILD)/typecheck.cmo \
+  	$(BUILD)/checker.cmo \
 	$(BUILD)/emit.cmo \
 	$(BUILD)/gen.cmo \
 	$(BUILD)/layout.cmo \
@@ -43,12 +43,15 @@ OBJS = \
 	$(BUILD)/bootstrap.cmo \
 	$(BUILD)/codegen.cmo \
 	$(BUILD)/runtime.cmo \
+	$(BUILD)/heap.cmo \
+	$(BUILD)/strings.cmo \
+	$(BUILD)/gc.cmo \
 	$(BUILD)/stack.cmo \
 	$(BUILD)/alloc.cmo \
 	$(BUILD)/builtin.cmo \
 	$(BUILD)/exec.cmo \
 	$(BUILD)/vm.cmo \
-  $(BUILD)/main.cmo
+  	$(BUILD)/main.cmo
 
 all: $(BUILD) core modules $(EXEC)
 
@@ -81,7 +84,7 @@ clean:
 
 run: 
 	make clean && make 
-	./cooli ./test/arith.cl
+	./cooli ./test/files/hs.cl
 
 regression:
 	make clean && make 

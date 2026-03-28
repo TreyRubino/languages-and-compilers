@@ -60,37 +60,76 @@ initializers directly, then returning the self object. No parent constructor
 calls are emitted; the flat pass covers inherited attributes naturally. Method
 lowering allocates a fresh frame layout and translates typed expressions into
 bytecode sequences terminated by explicit return instructions. The `n_locals`
-field of every generated method — including constructors — is computed from the
+field of every generated method, including constructors, is computed from the
 frame layout after lowering is complete, ensuring that `case` and `let`
-expressions within attribute initializers are allocated sufficient stack space.
+expressions within attribute initializers are allocated sufficient frame space.
+This was a correctness fix discovered through the `hs.cl` test: constructors
+with attribute initializers containing case expressions allocated local slots
+via `Layout.allocate_local` during lowering but previously hardcoded
+`n_locals = 0`, causing an out-of-bounds frame access at runtime.
+
 The lowering engine emits bytecode by recursively traversing the annotated AST,
-translating each COOL construct into a fixed opcode sequence. During this pass,
-jump targets for conditionals, loops, and case expressions are patched using
-instruction markers maintained by the emission buffer. Case branch matching
-emits `OP_IS_SUBTYPE` per branch rather than exact-equality checks, with
-branches sorted deepest-first so more specific types are tried before their
-ancestors. Class layout records store `parent_id = -1` for `Object`, which has
-no real parent; this sentinel terminates the `OP_IS_SUBTYPE` ancestry walk
-correctly. After all classes and methods are lowered, the IR is finalized by
-converting accumulated constants, class layouts, and methods into arrays. The
-result is a complete artifact that captures object layout, dispatch semantics,
-and executable bytecode for the virtual machine.
+translating each COOL construct into a fixed opcode sequence. Jump targets for
+conditionals, loops, and case expressions are patched using instruction markers
+maintained by the emission buffer. Case branch matching emits `OP_IS_SUBTYPE`
+per branch, with branches sorted deepest-first so more specific types are tried
+before ancestors. Class layout records store `parent_id = -1` for `Object`,
+which has no real parent; this sentinel terminates the `OP_IS_SUBTYPE` ancestry
+walk correctly. A related correctness issue discovered during testing was that
+the original `lower_class` assigned `Object.parent_id = 0` (a self-reference)
+rather than `-1`, causing the `OP_IS_SUBTYPE` walk to loop infinitely whenever
+a case scrutinee's type was not a subtype of any branch type. The fix is a
+single conditional in `lower_class` that detects `parent = cname` and stores
+`-1` instead.
+
+Attribute accesses in the bytecode use an `offset + 1` convention inherited
+from an earlier design that reserved `fields[0]` for a class tag. In the
+current slab-based VM, the tag is stored in the object header word and
+`fields[0]` no longer exists, so `exec.ml` translates by subtracting one at
+every `GET_ATTR`/`SET_ATTR` access site. After all classes and methods are
+lowered, the IR is finalized by converting accumulated constants, class
+layouts, and methods into arrays. The result is a complete artifact that
+captures object layout, dispatch semantics, and executable bytecode for the
+virtual machine.
 
 ## Testing  
-Testing for the code generator focused on validating layout correctness, slot
-assignment, constructor sequencing, and dispatch-table accuracy. Test programs
-were compiled and their IR dumps manually inspected to confirm that attributes
-were assigned correct offsets, dynamic dispatch slots aligned with inheritance
-structure, and constructors correctly initialized inherited and local
-attributes. Additional programs were executed on the VM to confirm operational
-correctness of emitted bytecode including arithmetic evaluation, conditional
-branching, loop semantics, let-bindings, case dispatch, and both dynamic and
-static method calls. Regression tests covering mutual class hierarchies with
-complex attribute initializers were used to validate flat constructor
-initialization and subtype case dispatch. Negative tests were also used to
-ensure the code generator never overrides or compensates for semantic errors
+Testing for the code generator was conducted across two dimensions: structural
+correctness of the generated IR and operational correctness of executed
+programs.
+
+IR dump inspection was the primary structural validation tool. For each test
+program, `debug.ml` produced a human-readable dump of the constant pool, class
+layouts, dispatch tables, and disassembled bytecode. These dumps were manually
+examined to confirm attribute offsets matched the linearized inheritance order,
+dispatch table slots aligned correctly with method overriding structure,
+constructors initialized every inherited and own attribute in the right
+sequence, and `OP_IS_SUBTYPE` branch targets were sorted deepest-first with
+correct class IDs.
+
+Operational correctness was validated by running compiled programs through the
+VM and comparing output against the Stanford COOL reference compiler. The
+`arith.cl` program validated arithmetic, negation, conditionals, loops,
+let-bindings, static dispatch, and case expressions across a five-class
+hierarchy with mutual method calls. The `hs.cl` program — the most demanding
+test — exercises a four-class mutual inheritance ring (`Bazz`, `Foo`, `Razz`,
+`Bar`) in which every class's attribute initializers allocate objects of
+related types, including case expressions on `self` that evaluate to new
+instances of sibling classes. This program exposed three distinct code
+generation bugs: the `n_locals = 0` hardcoding in constructors, the parent
+constructor chaining that caused infinite re-entrant construction, and the
+`Object.parent_id` self-cycle. Each was isolated through IR dump analysis and
+fixed individually.
+
+Regression tests confirmed that each fix was isolated: correcting `n_locals`
+did not affect dispatch, removing parent constructor chaining did not affect
+attribute initialization order, and the `Object.parent_id` fix did not change
+any other class's layout record. Negative tests were also used to ensure the
+code generator never compensates for or silently overrides semantic errors
 rejected earlier in the pipeline.
 
 ## References  
-[1] "The Cool Reference Manual," Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011. 
+[1] "The Cool Reference Manual," Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011.  
 [Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf
+
+[2] A. V. Aho, M. S. Lam, R. Sethi, and J. D. Ullman, Compilers: Principles, Techniques,
+and Tools, 2nd ed., ch. 6, "Intermediate-Code Generation," Pearson/Addison-Wesley, 2006.
