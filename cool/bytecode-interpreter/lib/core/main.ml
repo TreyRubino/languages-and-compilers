@@ -1,6 +1,8 @@
-(*
+(**
+@file   main.ml
+@brief  main entry point for full pipeline
 @author Trey Rubino
-@date 11/13/2025
+@date   11/15/2025
 *)
 
 Printexc.record_backtrace true;;

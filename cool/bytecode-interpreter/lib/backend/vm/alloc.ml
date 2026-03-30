@@ -1,12 +1,12 @@
 (**
-  @file   alloc.ml
-  @brief  Provides allocation routines for COOL objects. All allocations
-          flow through this module into the raw word slab. A collection is
-          triggered proactively when the slab's bump pointer reaches the GC
-          threshold. Integer and boolean results are unboxed values and never
-          allocated here. String objects are created via allocate_string.
-  @author Trey Rubino
-  @date   11/30/2025
+@file   alloc.ml
+@brief  Provides allocation routines for COOL objects. All allocations
+        flow through this module into the raw word slab. A collection is
+        triggered proactively when the slab's bump pointer reaches the GC
+        threshold. Integer and boolean results are unboxed values and never
+        allocated here. String objects are created via allocate_string.
+@author Trey Rubino
+@date   11/30/2025
 *)
 
 open Runtime

@@ -1,12 +1,12 @@
 (**
-  @file   runtime.ml
-  @brief  Defines the core runtime types used by the VM: the unboxed value
-          type, the raw word-slab managed heap, the parallel string table,
-          the call frame, and the virtual machine state. Integers and booleans
-          are unboxed values that never touch the heap. Only COOL objects
-          created with new and string results go to the slab.
-  @author Trey Rubino
-  @date   03/28/2026
+@file   runtime.ml
+@brief  Defines the core runtime types used by the VM: the unboxed value
+        type, the raw word-slab managed heap, the parallel string table,
+        the call frame, and the virtual machine state. Integers and booleans
+        are unboxed values that never touch the heap. Only COOL objects
+        created with new and string results go to the slab.
+@author Trey Rubino
+@date   03/28/2026
 *)
 
 open Bigarray

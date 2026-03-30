@@ -1,6 +1,9 @@
-(*
+(**
+@file   semantics.ml
+@brief  Semantic environment produced by the type checker and consumed
+        by codegen
 @author Trey Rubino
-@date 11/15/2025
+@date   11/15/2025
 *)
 
 open Ast

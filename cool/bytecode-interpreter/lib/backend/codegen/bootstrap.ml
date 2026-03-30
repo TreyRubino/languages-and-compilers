@@ -1,7 +1,11 @@
-(*
+(**
+@file   debug.ml
+@brief  Tools for generating readable dumps of class layouts, dispatch
+        tables, constants, and bytecode.
 @author Trey Rubino
-@date 03/03/2026
+@date   11/30/2025
 *)
+
 
 open Ast
 open Semantics

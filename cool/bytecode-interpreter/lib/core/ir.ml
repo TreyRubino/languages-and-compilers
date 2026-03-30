@@ -1,6 +1,8 @@
-(*
+(**
+@file   ir.ml
+@brief  COOL Language Intermediate Representation
 @author Trey Rubino
-@date 11/15/2025
+@date   11/15/2025
 *)
 
 type literal = 

@@ -1,13 +1,13 @@
 (**
-  @file   exec.ml
-  @brief  Core execution engine that interprets bytecode instructions over
-          the raw word slab. Integers and booleans are unboxed; no allocation
-          occurs for arithmetic, comparison, or boolean operations. Field
-          access, dispatch, and new-object instructions go through the slab
-          allocator and heap accessors. The GC is triggered implicitly by
-          Alloc.allocate_object whenever the bump pointer reaches threshold.
-  @author Trey Rubino
-  @date   11/30/2025
+@file   exec.ml
+@brief  Core execution engine that interprets bytecode instructions over
+        the raw word slab. Integers and booleans are unboxed; no allocation
+        occurs for arithmetic, comparison, or boolean operations. Field
+        access, dispatch, and new-object instructions go through the slab
+        allocator and heap accessors. The GC is triggered implicitly by
+        Alloc.allocate_object whenever the bump pointer reaches threshold.
+@author Trey Rubino
+@date   11/30/2025
 *)
 
 open Runtime

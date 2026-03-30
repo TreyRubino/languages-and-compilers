@@ -1,11 +1,11 @@
 (**
-  @file   stack.ml
-  @brief  Implements the VM call stack and value stack, supporting frame
-          creation, argument installation, local access, and stack-value
-          operations. self_ptr is a raw slab word offset replacing the old
-          self_obj direct OCaml reference.
-  @author Trey Rubino
-  @date   11/30/2025
+@file   stack.ml
+@brief  Implements the VM call stack and value stack, supporting frame
+        creation, argument installation, local access, and stack-value
+        operations. self_ptr is a raw slab word offset replacing the old
+        self_obj direct OCaml reference.
+@author Trey Rubino
+@date   11/30/2025
 *)
 
 open Runtime

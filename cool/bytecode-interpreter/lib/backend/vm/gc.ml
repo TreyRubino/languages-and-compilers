@@ -1,15 +1,15 @@
 (**
-  @file   gc.ml
-  @brief  Mark-and-sweep garbage collector for the raw word slab and the
-          parallel string table. The mark phase uses an explicit worklist to
-          avoid OCaml call-stack overflow on deep object graphs. It traces
-          all VPtr and StrIdx references reachable from the operand stack,
-          active frame locals, and frame self pointers, plus all constant
-          strings that are permanently live. The sweep phase scans the slab
-          linearly, coalescing adjacent dead blocks into the free list, and
-          then sweeps the string table.
-  @author Trey Rubino
-  @date   03/28/2026
+@file   gc.ml
+@brief  Mark-and-sweep garbage collector for the raw word slab and the
+        parallel string table. The mark phase uses an explicit worklist to
+        avoid OCaml call-stack overflow on deep object graphs. It traces
+        all VPtr and StrIdx references reachable from the operand stack,
+        active frame locals, and frame self pointers, plus all constant
+        strings that are permanently live. The sweep phase scans the slab
+        linearly, coalescing adjacent dead blocks into the free list, and
+        then sweeps the string table.
+@author Trey Rubino
+@date   03/28/2026
 *)
 
 open Runtime

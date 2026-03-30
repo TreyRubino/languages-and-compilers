@@ -1,10 +1,10 @@
 (**
-  @file   lower.ml
-  @brief  Core lowering logic. Translates typed COOL expressions, methods, and
-          class bodies into IR and bytecode. Handles layout, dispatch, control
-          flow, and constructors.
-  @author Trey Rubino
-  @date   11/16/2025
+@file   lower.ml
+@brief  Core lowering logic. Translates typed COOL expressions, methods, and
+        class bodies into IR and bytecode. Handles layout, dispatch, control
+        flow, and constructors.
+@author Trey Rubino
+@date   11/16/2025
 *)
 
 open Semantics

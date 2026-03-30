@@ -1,12 +1,12 @@
 (**
-  @file   strings.ml
-  @brief  Parallel string table for COOL runtime strings. String bytes live
-          in an OCaml string array managed here. The slab carries only an
-          integer slot index per String object. intern deduplicates content
-          via a hash table. The collector marks live slots; sweep reclaims
-          unreachable ones back to the free list.
-  @author Trey Rubino
-  @date   03/28/2026
+@file   strings.ml
+@brief  Parallel string table for COOL runtime strings. String bytes live
+        in an OCaml string array managed here. The slab carries only an
+        integer slot index per String object. intern deduplicates content
+        via a hash table. The collector marks live slots; sweep reclaims
+        unreachable ones back to the free list.
+@author Trey Rubino
+@date   03/28/2026
 *)
 
 open Runtime

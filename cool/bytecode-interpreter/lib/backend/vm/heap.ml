@@ -1,13 +1,13 @@
 (**
-  @file   heap.ml
-  @brief  Raw word-slab allocator for COOL runtime objects. Manages a
-          Bigarray.Array1 of nativeint words that lives outside OCaml's GC.
-          Allocation uses a bump pointer with a first-fit free list for
-          reclaimed blocks. Provides field encode/decode between the OCaml
-          value type and the slab's tagged-word representation, and exposes
-          the header manipulation primitives used by the collector.
-  @author Trey Rubino
-  @date   03/28/2026
+@file   heap.ml
+@brief  Raw word-slab allocator for COOL runtime objects. Manages a
+        Bigarray.Array1 of nativeint words that lives outside OCaml's GC.
+        Allocation uses a bump pointer with a first-fit free list for
+        reclaimed blocks. Provides field encode/decode between the OCaml
+        value type and the slab's tagged-word representation, and exposes
+        the header manipulation primitives used by the collector.
+@author Trey Rubino
+@date   03/28/2026
 *)
 
 open Bigarray

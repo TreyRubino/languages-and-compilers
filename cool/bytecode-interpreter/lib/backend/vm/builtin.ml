@@ -1,12 +1,12 @@
 (**
-  @file   builtin.ml
-  @brief  Handles all built-in COOL methods such as abort, copy, type_name,
-          I/O routines, and string operations. Dispatches these before normal
-          bytecode execution. Integer and boolean return values are unboxed.
-          String content is read from the parallel string table via the
-          StrIdx stored in String object field[0].
-  @author Trey Rubino
-  @date   12/02/2025
+@file   builtin.ml
+@brief  Handles all built-in COOL methods such as abort, copy, type_name,
+        I/O routines, and string operations. Dispatches these before normal
+        bytecode execution. Integer and boolean return values are unboxed.
+        String content is read from the parallel string table via the
+        StrIdx stored in String object field[0].
+@author Trey Rubino
+@date   12/02/2025
 *)
 
 open Runtime

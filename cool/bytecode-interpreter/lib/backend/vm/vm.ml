@@ -1,10 +1,10 @@
 (**
-  @file   vm.ml
-  @brief  Entry point for constructing the VM, instantiating the main object,
-          invoking its initializer, installing the entry method, and starting
-          program execution.
-  @author Trey Rubino
-  @date   11/30/2025
+@file   vm.ml
+@brief  Entry point for constructing the VM, instantiating the main object,
+        invoking its initializer, installing the entry method, and starting
+        program execution.
+@author Trey Rubino
+@date   11/30/2025
 *)
 
 open Runtime

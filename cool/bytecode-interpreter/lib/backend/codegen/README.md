@@ -14,9 +14,7 @@ Dr. Schwesinger
 - `gen.ml`: Maintains global IR construction state including constants, classes,
   methods, dispatch tables, and ID mappings. Produces the final IR record.  
 - `emit.ml`: Bytecode emitter. Provides opcode emission, operand handling, and
-  jump patching. Produces compact instruction arrays.  
-- `ir.ml`: Defines IR structures: literals, class layouts, dispatch tables,
-  methods, and instruction arrays.  
+  jump patching. Produces compact instruction arrays.   
 - `debug.ml`: Tools for generating readable dumps of class layouts, dispatch
   tables, constants, and bytecode.  
 

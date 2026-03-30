@@ -1,8 +1,9 @@
-(*
+(**
+@file   error.ml
+@brief  Unified error module for easy pipeline reporting
 @author Trey Rubino
-@date 11/15/2025
+@date   11/15/2025
 *)
-
 type t = {
   phase : string;
   line  : string;
