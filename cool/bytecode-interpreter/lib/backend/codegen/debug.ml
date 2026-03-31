@@ -9,6 +9,10 @@
 open Printf
 open Bytecode
 
+(** @brief Converts a bytecode operation variant (opcode) into its uppercase 
+           string representation for debugging and IR dumping.
+    @param op The bytecode operation to stringify.
+    @return A string matching the opcode's name (e.g., "OP_ADD" becomes "ADD"). *)
 let string_of_opcode = function
   | Bytecode.OP_POP -> "POP"
   | OP_CONST -> "CONST"
@@ -42,11 +46,21 @@ let string_of_opcode = function
   | OP_RETURN -> "RETURN"
   | OP_NOP -> "NOP"
 
+(** @brief Formats a bytecode operand (argument) into a string. Handles 
+           integers and jump offsets, providing a clean visual separator.
+    @param arg The operand variant to format.
+    @return A string containing the operand's value or an empty string if NoArg. *)
 let string_of_operand = function
   | Bytecode.NoArg -> ""
   | IntArg n -> sprintf " %d" n
   | OffsetArg o -> sprintf " %d" o
 
+(** @brief Generates a comprehensive text file dumping the entire state of 
+           the IR. This includes the constant pool, the class hierarchy 
+           with attribute offsets, the method dispatch tables, and a 
+           disassembled view of every bytecode instruction.
+    @param filename The path where the IR dump should be written.
+    @param ir The complete Intermediate Representation to be inspected. *)
 let dump_ir (filename : string) (ir : Ir.ir) : unit =
   let oc = open_out filename in
 

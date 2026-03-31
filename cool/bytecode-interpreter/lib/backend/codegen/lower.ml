@@ -23,6 +23,13 @@ type lower_ctx = {
   frame : Layout.frame_layout;
 }
 
+(** @brief Calculates the index of a method within a class's linearized dispatch 
+           table. This index is used by the VM to perform dynamic method lookup 
+           at runtime.
+    @param env The global semantic environment.
+    @param cname The name of the class containing the method.
+    @param mname The name of the method to locate.
+    @return The integer slot index in the dispatch table. *)
 let dispatch_slot env cname mname =
   let meths = linear_methods env cname in
   let rec find i = function
@@ -31,6 +38,12 @@ let dispatch_slot env cname mname =
   in
   find 0 meths
 
+(** @brief Calculates the inheritance depth of a class by recursively traversing 
+           the parent map until it reaches 'Object'. This is used to ensure 
+           parent classes are processed and laid out before their children.
+    @param env The semantic environment containing the hierarchy.
+    @param cname The name of the class to measure.
+    @return The integer depth (0 for Object). *)
 let rec depth env cname = 
   if cname = "Object" then 0 
   else 
@@ -40,9 +53,23 @@ let rec depth env cname =
     in
     1 + depth env parent
 
+(** @brief Maps a semantic attribute definition to an IR-level attribute 
+           record with its fixed word-offset.
+    @param a The attribute implementation.
+    @param offset The zero-indexed position in the object's field layout.
+    @return A finalized Ir.attr_info record. *)
 let lower_attr a offset =
   { name = a.aname; offset }
 
+(** @brief Constructs the metadata for a class, including parentage, attribute 
+           offsets, and the virtual dispatch table (vtable). It handles 
+           method overriding by replacing parent method IDs in existing slots.
+    @param st The global generation state.
+    @param env The semantic environment.
+    @param cname The name of the class to lower.
+    @param attrs The list of attributes specifically defined in this class.
+    @param _methods The list of methods available to this class.
+    @return A finalized Ir.class_info record. *)
 let lower_class st env cname attrs _methods =
   let id = Hashtbl.find st.class_ids cname in
 
@@ -103,6 +130,11 @@ let lower_class st env cname attrs _methods =
     dispatch = Array.of_list !disp;
   }
 
+(** @brief Recursively translates a typed AST expression into a sequence of 
+           VM bytecode instructions. Manages constants, local/attribute scoping, 
+           and control flow patching for If/While/Case.
+    @param ctx The current lowering context (buffer, environment, frame).
+    @param expr The typed AST expression to lower. *)
 let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
   match expr.expr_kind with
   | Integer s ->
@@ -328,7 +360,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     let slot = dispatch_slot ctx.env ctx.cname mname in
     emit_op_i ctx.buf OP_DISPATCH slot mloc
 
-| DynamicDispatch (recv, (mloc, mname), args) ->
+  | DynamicDispatch (recv, (mloc, mname), args) ->
     List.iter (fun a -> lower_expr ctx a) args;  (* push args first *)
     lower_expr ctx recv;                         (* receiver on top *)
 
@@ -380,6 +412,14 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     in
     emit_block_body exprs
 
+(** @brief Generates the '__init' constructor for a class. It linearizes all 
+           attribute initializers from the entire inheritance chain into a 
+           single flat routine to ensure correct object state.
+    @param st The global generation state.
+    @param env The semantic environment.
+    @param cname The name of the class.
+    @param attrs The list of attributes specifically defined in this class.
+    @return An Ir.method_info record containing the initialization bytecode. *)
 let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : string) (attrs : Semantics.attr_impl list) 
 : Ir.method_info =
   let buf = Emit.create () in
@@ -426,6 +466,14 @@ let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : strin
     line_map = Emit.get_line_map buf;
   }
 
+(** @brief Translates a method body into bytecode. Automatically injects 
+           the Main object's constructor call if the method is 'Main.main'.
+    @param st The global generation state.
+    @param env The semantic environment.
+    @param cname The class containing the method.
+    @param mname The name of the method.
+    @param impl The implementation details.
+    @return The completed Ir.method_info record. *)
 let lower_method st env cname mname impl =
   let buf = Emit.create () in
   let frame = Layout.create_frame_layout impl.formals in
@@ -472,6 +520,12 @@ let lower_method st env cname mname impl =
     line_map = Emit.get_line_map buf;
   }
 
+(** @brief Pre-scans a class to register all its method IDs in the global 
+           table. This allows method calls to be linked correctly even 
+           before the method bodies are fully compiled.
+    @param st The global generation state.
+    @param env The semantic environment.
+    @param cname The name of the class to scan. *)
 let scan_method_ids st env cname =
   let meths = linear_methods env cname in
   List.iter (fun (mname, impl) ->
@@ -486,6 +540,12 @@ let scan_method_ids st env cname =
     )
   ) meths
 
+(** @brief The high-level driver that lowers a full class. It coordinates 
+           the generation of the constructor, the translation of all methods, 
+           and the assembly of class-level metadata.
+    @param st The global generation state.
+    @param env The semantic environment.
+    @param cname The name of the class to fully lower into IR. *)
 let lower_class_group st env cname =
   let attrs =
     try Hashtbl.find env.class_map cname with _ -> []
@@ -507,11 +567,4 @@ let lower_class_group st env cname =
     )
   ) meths;
   let class_info = lower_class st env cname attrs meths in
-  (*Printf.printf "--- dispatch for %s ---\n" cname;
-  Array.iteri (fun i mid ->
-    let m = Gen.get_method st mid in
-    Printf.printf "  slot %d -> %d.%s\n" i m.class_id m.name
-  ) class_info.dispatch;
-  flush stdout;*)
-
   Gen.add_class st class_info;

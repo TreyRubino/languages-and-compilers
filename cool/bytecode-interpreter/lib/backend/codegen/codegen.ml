@@ -1,5 +1,5 @@
 (**
-@file   debug.ml
+@file   codegen.ml
 @brief  Tools for generating readable dumps of class layouts, dispatch
         tables, constants, and bytecode.
 @author Trey Rubino
@@ -13,7 +13,12 @@ open Lower
 open Bytecode
 open Debug
 
-(* Helper for sorting *)
+(** @brief Calculates the inheritance depth of a class by recursively traversing 
+           the parent map until it reaches 'Object'. This is used to ensure 
+           parent classes are processed and laid out before their children.
+    @param env The semantic environment containing the hierarchy.
+    @param cname The name of the class to measure.
+    @return The integer depth (0 for Object). *)
 let rec depth env cname = 
   if cname = "Object" then 0 
   else 
@@ -23,6 +28,11 @@ let rec depth env cname =
     in
     1 + depth env parent
 
+(** @brief The primary entry point for IR generation. It orchestrates class 
+           ID assignment, generates constructor stubs, scans for method 
+           signatures, and lowers the high-level AST into bytecode.
+    @param env The validated semantic environment from the previous compiler phase.
+    @return A complete Ir.ir record ready for the Virtual Machine. *)
 let emit (env : Semantics.semantic_env) : Ir.ir =
   let st = Gen.create () in
 
@@ -45,7 +55,7 @@ let emit (env : Semantics.semantic_env) : Ir.ir =
       n_locals = 0;
       n_formals = 0;
       code = [||]; 
-      line_map = [||];  (* empty, will be replaced *)
+      line_map = [||];  (* empty, will be updated at later stages *)
     } in
     Hashtbl.replace st.init_ids cname mid
   ) class_names;

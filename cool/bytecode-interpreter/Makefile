@@ -81,6 +81,8 @@ $(EXEC): $(OBJS)
 clean:
 	rm -rf $(BUILD)
 	rm -f $(EXEC)
+	rm -f debug.txt
+	rm -f delta_report.txt
 
 run: 
 	make clean && make 

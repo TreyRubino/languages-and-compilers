@@ -18,8 +18,12 @@ open Alloc
 open Ir
 open Error
 
+(** @brief Scans the line map of the currently executing method to determine 
+           the source code line number corresponding to the current program counter.
+    @param f The active call frame being executed.
+    @return A string representation of the line number, or "unknown" if not found. *)
 let get_line_number (f : frame) : string =
-  let pc = f.pc in
+  let pc = f.pc - 1 in
   let m  = f.method_info in
   let best_line = ref 0 in
   Array.iter (fun (start_pc, line) ->
@@ -27,36 +31,64 @@ let get_line_number (f : frame) : string =
   ) m.line_map;
   if !best_line = 0 then "unknown" else string_of_int !best_line
 
+(** @brief Ensures an integer fits within a 32-bit signed range, mimicking 
+           standard COOL/MIPS behavior within the OCaml environment.
+    @param x The native OCaml integer to convert.
+    @return A 32-bit consistent integer value. *)
 let to_int32 (x : int) : int =
   Int32.to_int (Int32.of_int x)
 
+(** @brief Validates that a VM value is an unboxed integer (VInt). If the 
+           value is VVoid or a different type, it raises a runtime error.
+    @param v The COOL value to inspect.
+    @param f The current frame for error reporting context.
+    @return The raw integer value if successful. *)
 let expect_int (v : value) (f : frame) : int =
   match v with
   | VInt i -> i
   | VVoid  -> Error.vm (get_line_number f) "expected Int (void)"
   | _      -> Error.vm (get_line_number f) "expected Int"
 
+(** @brief Validates that a VM value is an unboxed boolean (VBool). If the 
+           value is VVoid or a different type, it raises a runtime error.
+    @param v The COOL value to inspect.
+    @param f The current frame for error reporting context.
+    @return The raw boolean value if successful. *)
 let expect_bool (v : value) (f : frame) : bool =
   match v with
   | VBool b -> b
   | VVoid   -> Error.vm (get_line_number f) "expected Bool (void)"
   | _       -> Error.vm (get_line_number f) "expected Bool"
 
+(** @brief Validates that a VM value is a heap pointer (VPtr). If the value 
+           is VVoid, it triggers a "dispatch to void" runtime error.
+    @param v The COOL value to inspect.
+    @param f The current frame for error reporting context.
+    @param ctx A descriptive string for the operation (e.g., "GET_ATTR") for error reporting.
+    @return The slab word offset if successful. *)
 let expect_ptr (v : value) (f : frame) (ctx : string) : int =
   match v with
   | VPtr p -> p
-  | VVoid  -> Error.vm (get_line_number f) "%s: receiver is void" ctx
+  | VVoid  -> Error.vm (get_line_number f) "dispatch on void" ctx
   | _      -> Error.vm (get_line_number f) "%s: expected object" ctx
 
-(* convert a constant-table literal to a runtime value.
-   integers and booleans are unboxed. strings allocate a String heap object
-   and intern the content in the string table. *)
+(** @brief Maps an IR-level literal (Int, Bool, String) to its operational 
+           runtime value. String literals are automatically allocated on 
+           the slab and interned in the parallel string table.
+    @param st The current global VM state.
+    @return A function that transforms an Ir.literal into a Runtime.value. *)
 let const_of_lit (st : vm_state) : Ir.literal -> value = function
   | LInt i    -> VInt i
   | LBool b   -> VBool b
   | LString s -> VPtr (Alloc.allocate_string st s)
   | LVoid     -> VVoid
 
+(** @brief The central interpreter loop of the Virtual Machine. It fetches 
+           the next bytecode instruction, performs the associated operation 
+           (arithmetic, object access, or stack manipulation), and manages 
+           the flow of execution across call frames.
+    @param st The global VM state, including the heap, stacks, and IR.
+    @return The final COOL value produced by the program upon completion. *)
 let run (st : vm_state) : value =
   let rec loop () =
     let frame =
@@ -175,7 +207,7 @@ let run (st : vm_state) : value =
       | _ -> Error.vm (get_line_number frame) "JUMP_IF_FALSE missing offset")
 
     | OP_CASE_ABORT ->
-      Error.vm (get_line_number frame) "case statement without matching branch"
+      Error.vm (get_line_number frame) "case on void"
 
     | OP_ADD ->
       let rhs = expect_int (Stack.pop_val st) frame in

@@ -1,5 +1,5 @@
 (**
-@file   debug.ml
+@file   layout.ml
 @brief  Tools for generating readable dumps of class layouts, dispatch
         tables, constants, and bytecode.
 @author Trey Rubino
@@ -9,6 +9,12 @@
 
 open Semantics
 
+(** @brief Calculates the full inheritance path of a class, from 'Object' down 
+           to the specified class. This sequence is used to determine the 
+           order of attribute and method definitions.
+    @param env The global semantic environment.
+    @param cls The name of the class to trace.
+    @return A list of class names representing the linear ancestry path. *)
 let ancestry (env : Semantics.semantic_env) (cls : string) : string list =
   let rec go acc c = 
     if c = "Object" then ("Object" :: acc)
@@ -21,6 +27,13 @@ let ancestry (env : Semantics.semantic_env) (cls : string) : string list =
   in
   go [] cls
 
+(** @brief Produces a linearized list of all methods available to a class, 
+           including those inherited or overridden from parents. It ensures 
+           that an overridden method maintains the same index in the 
+           dispatch table as its original definition.
+    @param env The global semantic environment.
+    @param cls The name of the class for which to build the dispatch table.
+    @return A list of method implementations sorted by their appearance in the hierarchy. *)
 let linear_methods (env : Semantics.semantic_env) (cls : string) : (string * Semantics.method_impl) list =
   let path = ancestry env cls in
   let table = Hashtbl.create 32 in
@@ -47,6 +60,13 @@ let linear_methods (env : Semantics.semantic_env) (cls : string) : (string * Sem
   
   List.rev !order |> List.map (fun mname -> (mname, Hashtbl.find table mname))
 
+(** @brief Calculates the memory layout of an object's attributes. It 
+           ensures that inherited attributes appear first, followed by 
+           attributes defined in the child class, maintaining fixed offsets 
+           for polymorphic access.
+    @param env The global semantic environment.
+    @param cls The name of the class to layout.
+    @return A list of attribute implementations in their physical slab order. *)
 let linear_attrs (env : Semantics.semantic_env) (cls : string) : Semantics.attr_impl list =
   let path = ancestry env cls in
   let table = Hashtbl.create 32 in
@@ -70,6 +90,11 @@ type frame_layout = {
   local_count : int ref;
 }
 
+(** @brief Initializes the layout for a method's activation record (call frame). 
+           It maps formal parameters to initial local slots and prepares 
+           counters for additional local variables allocated during execution.
+    @param formals The list of method parameters (name and type).
+    @return A frame_layout record containing the slot mapping and counters. *)
 let create_frame_layout (formals : (Ast.id * Ast.cool_type) list) : frame_layout =
   let env = Hashtbl.create 16 in
   List.iteri (fun i ((_, name), _) ->
@@ -81,6 +106,12 @@ let create_frame_layout (formals : (Ast.id * Ast.cool_type) list) : frame_layout
     local_count = ref 0;
   }
 
+(** @brief Reserves a new slot in the current call frame for a local variable 
+           (e.g., from a 'let' binding or 'case' branch) and updates the 
+           frame's local count.
+    @param fl The current frame layout being constructed.
+    @param name The name of the local variable to allocate.
+    @return The integer index of the newly assigned stack slot. *)
 let allocate_local (fl : frame_layout) (name : string) : int =
   let slot = !(fl.next_slot) in
   Hashtbl.add fl.slot_env name slot;

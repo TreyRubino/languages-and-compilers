@@ -14,18 +14,22 @@
 
 open Runtime
 
-(* -------------------------------------------------------------------------
-   mark phase
-   ----------------------------------------------------------------------- *)
-
-(* seed the worklist from an OCaml value; only VPtr references slab objects. *)
+(** @brief Evaluates an OCaml value to identify heap references. If the value 
+           is a VPtr, its corresponding slab offset is added to the mark-phase 
+           worklist for further tracing.
+    @param worklist The queue of slab offsets pending reachability analysis.
+    @param v The COOL value to inspect for pointers. *)
 let seed_value (worklist : int Queue.t) (v : value) : unit =
   match v with
   | VPtr p -> Queue.push p worklist
   | _      -> ()
 
-(* scan a single slab object's fields, pushing child pointers onto the
-   worklist and directly marking any StrIdx references found. *)
+(** @brief Iterates through the field slots of a specific slab object. It identifies 
+           child pointers (VPtr) to add to the worklist and immediately marks 
+           any string table indices (StrIdx) found within the object's data.
+    @param worklist The queue of slab offsets pending reachability analysis.
+    @param st The global VM state.
+    @param p The word offset of the object being scanned. *)
 let scan_fields (worklist : int Queue.t) (st : vm_state) (p : int) : unit =
   let size = Nativeint.to_int st.heap.slab.{p + 1} in
   for i = 2 to size - 1 do
@@ -37,9 +41,11 @@ let scan_fields (worklist : int Queue.t) (st : vm_state) (p : int) : unit =
         Strings.mark st.strings (Heap.decode_str_idx w)
   done
 
-(* mark all objects reachable from the given roots using a worklist.
-   the mark bit in the slab header is the visited flag; objects already
-   marked are skipped to handle cycles and shared structure. *)
+(** @brief Initiates the mark phase by identifying all "Root" references from 
+           the operand stack, frame locals, self pointers, and the permanent 
+           string literal pool. It then drains the worklist to mark the entire 
+           transitive closure of reachable objects.
+    @param st The global VM state. *)
 let mark_roots (st : vm_state) : unit =
   let worklist = Queue.create () in
 
@@ -70,10 +76,6 @@ let mark_roots (st : vm_state) : unit =
     end
   done
 
-(* -------------------------------------------------------------------------
-   sweep phase
-   ----------------------------------------------------------------------- *)
-
 (* scan the slab linearly from offset 0 to the bump pointer.
    three cases per block:
      pre-existing free node   — already reclaimed; just re-add to free list
@@ -82,6 +84,11 @@ let mark_roots (st : vm_state) : unit =
                                 to free node, coalesce with previous if adjacent.
      marked live object       — survives; clear mark bit for next cycle.
    rebuilds h.free from scratch each collection. *)
+(** @brief Performs a linear scan of the entire slab to reclaim memory. It 
+           identifies unmarked objects, converts them into free nodes, and 
+           performs immediate coalescing by merging adjacent dead blocks 
+           into single, larger entries in the free list.
+    @param st The global VM state. *)
 let sweep_heap (st : vm_state) : unit =
   let h = st.heap in
   h.free <- [];
@@ -119,11 +126,11 @@ let sweep_heap (st : vm_state) : unit =
 
     i := !i + size
   done
-
-(* -------------------------------------------------------------------------
-   collection entry point
-   ----------------------------------------------------------------------- *)
-
+  
+(** @brief The high-level entry point for a garbage collection cycle. It 
+           coordinates the marking of the heap and string table, followed 
+           by the sweeping of the slab and the parallel string array.
+    @param st The global VM state to be collected. *)
 let collect (st : vm_state) : unit =
   mark_roots st;
   sweep_heap st;

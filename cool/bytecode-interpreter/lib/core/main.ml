@@ -9,6 +9,10 @@ Printexc.record_backtrace true;;
 
 open Debug
 
+(** @brief Reads the entire contents of a file into a single string. 
+           Used for loading COOL source files before lexing.
+    @param filename The path to the file on disk.
+    @return The full string content of the file. *)
 let read_file filename =
   let ic = open_in filename in
   let len = in_channel_length ic in
@@ -16,13 +20,20 @@ let read_file filename =
   close_in ic;
   s
 
+(** @brief The master execution routine for the COOL compiler and VM. 
+           It parses command-line arguments to decide between "Bootstrap" 
+           mode (loading .cl-type files) or "Standard" mode (lexing and 
+           parsing .cl files). It then pipes the resulting semantic 
+           environment through the Codegen and starts the VM.
+    @return Unit. Exits with code 1 on any error or exception. *)
 let () =
   let args = Array.to_list Sys.argv in
+  let debug_mode = List.mem "-d" args in
   let bootstrap_mode = List.mem "-b" args in
-  let remaining_args = List.filter (fun a -> a <> "-b" && a <> Sys.argv.(0)) args in
+  let remaining_args = List.filter (fun a -> a <> "-b" && a <> "-d" && a <> Sys.argv.(0)) args in
 
   if List.length remaining_args < 1 then (
-    Printf.eprintf "usage: %s [-b] <file>\n" Sys.argv.(0);
+    Printf.eprintf "usage: %s [-b | -d] <file>\n" Sys.argv.(0);
     exit 1
   );
 
@@ -72,7 +83,9 @@ let () =
   in
 
   (* debugging *)
-  Debug.dump_ir "debug.txt" ir;
+  if debug_mode then (
+    Debug.dump_ir "debug.txt" ir
+  );
 
   (* vm *)
   try 

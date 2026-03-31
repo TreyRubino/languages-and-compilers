@@ -13,6 +13,12 @@ open Runtime
 open Bytecode
 open Error
 
+(** @brief Processes raw string data to interpret escape sequences such as 
+           newlines and tabs. This ensures that strings stored in the IR 
+           format are printed correctly to the standard output.
+    @param s The raw string containing potential escape characters.
+    @return A formatted string with escaped characters converted to their 
+            literal equivalents. *)
 let unescape (s : string) : string =
   let len = String.length s in
   let buf = Buffer.create len in
@@ -35,15 +41,27 @@ let unescape (s : string) : string =
   loop 0;
   Buffer.contents buf
 
-(* retrieve the string content of the String object at slab offset ptr. *)
+(** @brief Retrieves the actual string bytes from the parallel string table 
+           by reading the StrIdx field from a String object located on the slab.
+    @param st The current global VM state.
+    @param ptr The slab word offset of the String object.
+    @return The OCaml string content associated with the heap object. *)
 let get_string (st : vm_state) (ptr : int) : string =
   let idx = Heap.get_str_field st.heap ptr in
   st.strings.data.(idx)
 
+(** @brief Intercepts method calls to built-in COOL classes (Object, IO, String, Int) 
+           and executes them using native OCaml functions. This handles fundamental 
+           operations like deep-copying objects, performing terminal I/O, and 
+           manipulating strings via the parallel table.
+    @param st The current global VM state.
+    @param frame The current activation record containing the receiver (self) 
+                 and any method arguments.
+    @return Some(value) if a built-in was handled, or None if the interpreter 
+            should proceed with normal bytecode execution. *)
 let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
   let m = frame.method_info in
   match m.name with
-
   | "abort" ->
     Printf.printf "abort\n"; exit 1
 
@@ -87,12 +105,17 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
   | "in_int" ->
     let i =
       try int_of_string (String.trim (read_line ()))
-      with _ -> 0
+      with
+      | End_of_file -> 0 
+      | _ -> 0
     in
     Some (VInt i)
 
   | "in_string" ->
-    let s = read_line () in
+    let s = 
+      try read_line () 
+      with End_of_file -> "" 
+    in
     Some (VPtr (Alloc.allocate_string st s))
 
   | "concat" ->
@@ -109,15 +132,15 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
     let i =
       match frame.locals.(0) with
       | VInt n -> n
-      | _      -> Error.vm "0" "substr expected Int index"
+      | _      -> Error.vm "0" "String.substr expected Int index"
     in
     let l =
       match frame.locals.(1) with
       | VInt n -> n
-      | _      -> Error.vm "0" "substr expected Int length"
+      | _      -> Error.vm "0" "String.substr expected Int length"
     in
     if i < 0 || l < 0 || i + l > String.length base then
-      Error.vm "0" "substr out of range";
+      Error.vm "0" "String.substr out of range";
     Some (VPtr (Alloc.allocate_string st (String.sub base i l)))
 
   | "length" ->

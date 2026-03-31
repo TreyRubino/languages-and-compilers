@@ -7,6 +7,10 @@
 @date   11/15/2025
 *)
 
+
+(** @brief Defines the full set of opcodes supported by the COOL Virtual Machine. 
+           These operations cover stack manipulation, arithmetic, control flow, 
+           object creation, and both dynamic and static method dispatch. *)
 type opcode =
   | OP_POP
   | OP_CONST
@@ -40,7 +44,11 @@ type opcode =
   | OP_RETURN
   | OP_NOP
 
-  let string_of_op = function
+(** @brief Utility function to convert an opcode variant into its 
+           corresponding string representation for logging or debugging.
+    @param op The opcode variant to stringify.
+    @return A string matching the variant name. *)
+let string_of_op = function
   | OP_POP -> "OP_POP"
   | OP_CONST -> "OP_CONST"
   | OP_TRUE -> "OP_TRUE"
@@ -73,14 +81,22 @@ type opcode =
   | OP_RETURN -> "OP_RETURN"
   | OP_NOP -> "OP_NOP"
 
+(** @brief Represents the argument associated with an instruction. 
+           Instructions can have no arguments, a direct integer argument 
+           (like a class ID or local slot), or a relative PC offset for jumps. *)
 type operand = 
   | NoArg
   | IntArg of int
   | OffsetArg of int
 
+(** @brief A single executable unit within the VM, pairing an operation 
+           (opcode) with its necessary metadata (operand). *)
 type instruction = {
   op : opcode;
   arg: operand;
 }
 
+(** @brief A linearized sequence of instructions representing a compiled 
+           method body, optimized for fast indexing during the VM's 
+           fetch-decode-execute cycle. *)
 type program = instruction array

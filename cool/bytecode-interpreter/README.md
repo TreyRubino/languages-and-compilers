@@ -79,3 +79,28 @@ dead blocks to reduce fragmentation. String content is interned in a parallel
 table managed by the same collector. Each module interacts only through the
 shared structures defined under `core/`, ensuring a consistent and maintainable
 implementation.
+
+## Pipeline Usage  
+The system is managed via a central Makefile that orchestrates the compilation
+of the frontend, backend, and core modules. Executing `make` produces the
+`cooli` (COOL Interpreter) executable in the project root. Running `make clean`
+removes the build directory, the executable, and any generated debug or delta
+reports.
+
+The `cooli` executable supports two primary modes of operation. In standard
+mode, compiling and executing a raw COOL source file is done via
+`./cooli <file.cl>`. The interpreter will lex, parse, and type-check the
+source before lowering it to bytecode. In bootstrap mode, bypassing the
+frontend to run the system using a pre-generated semantic analysis file is
+achieved using the `-b` flag via `./cooli -b <file.cl-type>`.
+
+For debugging and IR inspection, passing the `-d` flag via
+`./cooli -d <file.cl>` generates a human-readable dump of the constant table,
+class layouts, and disassembled bytecode, producing a `debug.txt` file of the
+precise IR state used by the VM.
+
+The project includes automated scripts for validation. Running
+`make regression` executes the full suite of validation programs, while
+`make delta` performs a differential analysis against reference outputs. A
+convenience rule, `make run`, rebuilds the system and executes the standard
+test case. 

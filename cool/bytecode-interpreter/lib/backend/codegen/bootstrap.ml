@@ -10,28 +10,59 @@
 open Ast
 open Semantics
 
+(** @brief A temporary representation of a method's implementation used during 
+           the parsing phase before formal semantic validation is complete.
+    @param r_definer The name of the class where this method was originally defined.
+    @param r_formals The list of formal parameter names.
+    @param r_body The AST or internal body of the method. *)
 type raw_method_impl = {
   r_definer : string;
   r_formals : string list;
   r_body    : method_body;
 }
 
+(** @brief Parses a string into a formal static type, distinguishing between 
+           standard class names and the special 'SELF_TYPE' identifier.
+    @param s The string identifier from the input stream.
+    @return Some(type) if valid, or None if the type cannot be determined. *)
 let parse_static_type s =
   if s = "SELF_TYPE" then Some (SELF_TYPE s)
   else Some (Class s)
 
+(** @brief Utility function to generate a list of integers from k down to 1. 
+           Typically used to iterate through numbered entries in the input stream.
+    @param k The number of elements to generate.
+    @return A list containing integers [k; k-1; ...; 1]. *)
 let rec range k = if k <= 0 then [] else k :: (range (k - 1))
+
+(** @brief Reads a single line from the input channel, stripping the newline character.
+    @param ic The input channel linked to the serialized semantic data.
+    @return The string contents of the line. *)
 let read ic = input_line ic
 
+(** @brief Higher-order function that reads a list of items from the input channel. 
+           It first reads an integer 'k', then calls the worker function 'k' times.
+    @param ic The input channel.
+    @param worker A function that parses a single element of type 'a.
+    @return A list of 'a elements parsed from the stream. *)
 let read_list ic worker =
   let k = int_of_string (read ic) in
   List.map (fun _ -> worker ic) (range k)
 
+(** @brief Reads a pair of lines representing a source code location and an identifier name.
+    @param ic The input channel.
+    @return A tuple of (location, name). *)
 let read_id ic =
   let loc = read ic in
   let name = read ic in
   (loc, name)
 
+(** @brief Recursively reconstructs an AST expression from the serialized input stream. 
+           It dispatches based on operation tags (e.g., "assign", "if", "dynamic_dispatch") 
+           to build the complex tree structure.
+    @param ic The input channel.
+    @param eloc The source location of the expression.
+    @return A fully formed expr record with its associated static type. *)
 let rec read_expr_from ic eloc : expr =
   let st = read ic in
   let tag = read ic in
@@ -119,10 +150,19 @@ let rec read_expr_from ic eloc : expr =
   in
   { loc = eloc; expr_kind = ekind; static_type = parse_static_type st }
 
+
+(** @brief Entry point for reading an expression; fetches the location line 
+           before calling read_expr_from.
+    @param ic The input channel.
+    @return The reconstructed expression. *)
 and read_expr ic =
   let eloc = read ic in
   read_expr_from ic eloc
 
+(** @brief Parses the 'class_map' section of the semantic output, which defines 
+           the physical layout of every class including inherited attributes.
+    @param ic The input channel.
+    @return A hash table mapping class names to their list of attributes. *)
 let read_class_map ic =
   let tag = read ic in
   if tag <> "class_map" then failwith ("expected class_map, got " ^ tag);
@@ -151,6 +191,10 @@ let read_class_map ic =
   List.iter (fun (cname, attrs) -> Hashtbl.replace tbl cname attrs) class_entries;
   tbl
 
+(** @brief Parses the 'implementation_map' section, defining exactly which 
+           method body is invoked for every class and method name pair.
+    @param ic The input channel.
+    @return A nested hash table: class_name -> (method_name -> raw_implementation). *)
 let read_implementation_map ic =
   let tag = read ic in
   if tag <> "implementation_map" then failwith ("expected implementation_map, got " ^ tag);
@@ -188,6 +232,10 @@ let read_implementation_map ic =
   ) class_entries;
   tbl
 
+(** @brief Parses the 'parent_map' section, which explicitly defines the 
+           inheritance hierarchy of the COOL program.
+    @param ic The input channel.
+    @return A hash table mapping child class names to their direct parents. *)
 let read_parent_map ic =
   let tag = read ic in
   if tag <> "parent_map" then failwith ("expected parent_map, got " ^ tag);
@@ -202,11 +250,18 @@ let read_parent_map ic =
   List.iter (fun (c, p) -> Hashtbl.replace tbl c p) pairs;
   tbl
 
+(** @brief Reads a method formal parameter, consisting of its name and type identifier.
+    @param ic The input channel.
+    @return A tuple of (id, type_id). *)
 let read_formal ic =
   let fname = read_id ic in
   let ftype = read_id ic in
   (fname, ftype)
 
+(** @brief Parses a class feature, identifying it as either an attribute 
+           (with or without initialization) or a method.
+    @param ic The input channel.
+    @return The parsed feature variant. *)
 let read_feature ic =
   match read ic with
   | "attribute_no_init" ->
@@ -226,6 +281,10 @@ let read_feature ic =
     Method(mname, formals, mtype, mbody)
   | x -> failwith ("bad feature tag: " ^ x)
 
+(** @brief Reconstructs a full COOL class definition, including its name, 
+           parent, and list of features (methods and attributes).
+    @param ic The input channel.
+    @return A tuple containing the class metadata and its feature list. *)
 let read_cool_class ic =
   let cname = read_id ic in
   let inherits =
@@ -237,8 +296,17 @@ let read_cool_class ic =
   let features = read_list ic read_feature in
   (cname, inherits, features)
 
+(** @brief Reads the entire program structure as a list of class definitions.
+    @param ic The input channel.
+    @return The full list of parsed classes. *)
 let read_program ic = read_list ic read_cool_class
 
+(** @brief The primary loader for the Codegen environment. It consumes the 
+           serialized output of the Semantic Analyzer to build a 'semantic_env'. 
+           This environment contains all the mapping and AST data required to 
+           generate bytecode and layout the heap.
+    @param ic The input channel containing the semantic data.
+    @return A semantic_env populated with maps and the program AST. *)
 let load_bootstrap_env (ic : in_channel) : semantic_env =
   let raw_class_map = read_class_map ic in
   let raw_impl_map = read_implementation_map ic in

@@ -13,14 +13,19 @@ open Alloc
 open Stack
 open Ir
 
+
+(** @brief Orchestrates the complete Virtual Machine lifecycle, from memory 
+           initialization to final bytecode execution. It instantiates the 
+           runtime state, allocates the 'Main' object on the heap, and 
+           sets up the initial call frame for the entry point.
+    @param ir The complete intermediate representation (IR) of the program, 
+              including the class hierarchy and method table.
+    @return The final COOL value resulting from the program's execution, 
+            typically the result of the main() method. *)
 let execute (ir : Ir.ir) : value =
   let st            = Runtime.create_vm ir in
   let entry_m       = ir.methods.(ir.entry_method) in
   let main_class_id = entry_m.class_id in
-  (* allocate the Main object without pushing an init frame. lower_method
-     emits GET_SELF; CALL __init_Main; POP at the top of main(), so the
-     constructor is invoked exactly once from there. using allocate_and_init
-     here would push a second init frame, causing __init_Main to run twice. *)
   let main_ptr      = Alloc.allocate_object st main_class_id in
   Stack.push_frame st main_ptr ir.entry_method [];
   Exec.run st

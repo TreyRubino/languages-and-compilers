@@ -14,6 +14,12 @@ open Stack
 open Error
 open Ir
 
+(** @brief Scans the IR class table to map a human-readable class name to its 
+           internal integer identifier. This is used during allocation to 
+           ensure the correct memory layout and dispatch table are used.
+    @param st The current global VM state.
+    @param name The name of the class to look up.
+    @return The unique integer class ID. *)
 let find_class_id (st : vm_state) (name : string) : int =
   let rec go i =
     if i >= Array.length st.ir.classes then
@@ -23,10 +29,13 @@ let find_class_id (st : vm_state) (name : string) : int =
   in
   go 0
 
-(* allocate a COOL object of the given class on the raw slab.
-   triggers a collection if the bump pointer has reached the threshold.
-   String class is special: it always gets one slab field for its content
-   index, initialized to the empty string. returns the word offset. *)
+(** @brief Reserves a block of memory on the raw slab for a new COOL object. 
+           It checks the GC threshold before allocation, determines the 
+           required field count from the class metadata, and handles the 
+           initialization of the special String class index.
+    @param st The current global VM state.
+    @param class_id The identifier for the class being instantiated.
+    @return The slab word offset of the freshly allocated object. *)
 let allocate_object (st : vm_state) (class_id : int) : int =
   if Heap.needs_gc st.heap then Gc.collect st;
   let cls = st.ir.classes.(class_id) in
@@ -41,9 +50,12 @@ let allocate_object (st : vm_state) (class_id : int) : int =
   end;
   p
 
-(* allocate a String object containing the given string content.
-   interns the string content in the string table and writes the resulting
-   index into field[0] of the new slab object. returns the word offset. *)
+(** @brief Creates a new COOL String object on the slab and populates its 
+           primary field with an index from the parallel string table. 
+           It performs content interning to ensure string deduplication.
+    @param st The current global VM state.
+    @param s The OCaml string content to be stored.
+    @return The slab word offset of the new String object. *)
 let allocate_string (st : vm_state) (s : string) : int =
   if Heap.needs_gc st.heap then Gc.collect st;
   let str_cid = find_class_id st "String" in
@@ -52,8 +64,13 @@ let allocate_string (st : vm_state) (s : string) : int =
   Heap.set_str_field st.heap p idx;
   p
 
-(* allocate an object and push its constructor frame onto the call stack.
-   used only at VM startup for the Main object. returns the word offset. *)
+(** @brief A high-level routine that allocates a COOL object and immediately 
+           queues its constructor (__init) on the call stack. This ensures 
+           that the object's attributes are initialized according to the 
+           class definition before it is used.
+    @param st The current global VM state.
+    @param class_id The identifier for the class to instantiate and initialize.
+    @return The slab word offset of the object awaiting initialization. *)
 let allocate_and_init (st : vm_state) (class_id : int) : int =
   let p   = allocate_object st class_id in
   let cls = st.ir.classes.(class_id) in
