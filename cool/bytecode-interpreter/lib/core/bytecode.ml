@@ -41,7 +41,6 @@ type opcode =
   | OP_DISPATCH
   | OP_STATIC_DISPATCH
   | OP_RETURN
-  | OP_NOP
 
 (** @brief Utility function to convert an opcode variant into its 
            corresponding string representation for logging or debugging.
@@ -78,7 +77,6 @@ let string_of_op = function
   | OP_DISPATCH -> "OP_DISPATCH"
   | OP_STATIC_DISPATCH -> "OP_STATIC_DISPATCH"
   | OP_RETURN -> "OP_RETURN"
-  | OP_NOP -> "OP_NOP"
 
 (** @brief Represents the argument associated with an instruction. 
            Instructions can have no arguments, a direct integer argument 

@@ -347,9 +347,5 @@ let run (st : vm_state) : value =
           ret
         | [] ->
           Error.vm (get_line_number frame) "RETURN with no frame")
-
-    | OP_NOP ->
-      Error.vm (get_line_number frame) "no op not implemented yet";
-      loop ()
   in
   loop ()

@@ -41,7 +41,6 @@ let string_of_opcode = function
   | OP_DISPATCH -> "DISPATCH"
   | OP_STATIC_DISPATCH -> "STATIC_DISPATCH"
   | OP_RETURN -> "RETURN"
-  | OP_NOP -> "NOP"
 
 let string_of_operand = function
   | Bytecode.NoArg -> ""

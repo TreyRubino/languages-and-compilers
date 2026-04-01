@@ -132,9 +132,9 @@ rejected earlier in the pipeline.
 [2] A. V. Aho, M. S. Lam, R. Sethi, and J. D. Ullman, Compilers: Principles, Techniques,
 and Tools, 2nd ed., ch. 6, "Intermediate-Code Generation," Pearson/Addison-Wesley, 2006.
 
-[4] "Code generation (compiler)," Wikipedia, The Free Encyclopedia, Apr. 2026. [Online]. 
+[3] "Code generation (compiler)," Wikipedia, The Free Encyclopedia, Apr. 2026. [Online]. 
 Available: https://en.wikipedia.org/wiki/Code_generation_compiler
 
-[3] R. Nystrom, Crafting Interpreters, 1st ed. Genever Benning, 2021.
+[4] R. Nystrom, Crafting Interpreters, 1st ed. Genever Benning, 2021.
 
 Note: Grammarly was used in conjunction to write this document.
