@@ -41,15 +41,13 @@ let scan_fields (worklist : int Queue.t) (st : vm_state) (p : int) : unit =
         Strings.mark st.strings (Heap.decode_str_idx w)
   done
 
-(** @brief Initiates the mark phase by identifying all "Root" references from 
+(** @brief Initiates the mark phase by identifying all root references from 
            the operand stack, frame locals, self pointers, and the permanent 
            string literal pool. It then drains the worklist to mark the entire 
            transitive closure of reachable objects.
     @param st The global VM state. *)
 let mark_roots (st : vm_state) : unit =
   let worklist = Queue.create () in
-
-  (* operand stack *)
   List.iter (seed_value worklist) st.stack;
 
   (* active frames: self pointer and all locals *)
@@ -58,7 +56,7 @@ let mark_roots (st : vm_state) : unit =
     Array.iter (seed_value worklist) f.locals
   ) st.frames;
 
-  (* constant-table strings are permanently live for the program lifetime *)
+  (* constant table strings are permanently live for the program lifetime *)
   Array.iter (function
     | Ir.LString s ->
       (match Hashtbl.find_opt st.strings.tbl s with
@@ -70,20 +68,12 @@ let mark_roots (st : vm_state) : unit =
   (* drain worklist *)
   while not (Queue.is_empty worklist) do
     let p = Queue.pop worklist in
-    if not (Heap.is_marked st.heap p) then begin
+    if not (Heap.is_marked st.heap p) then (
       Heap.mark_obj st.heap p;
       scan_fields worklist st p
-    end
+    )
   done
 
-(* scan the slab linearly from offset 0 to the bump pointer.
-   three cases per block:
-     pre-existing free node   — already reclaimed; just re-add to free list
-                                for coalescing. n_live_words unchanged.
-     unmarked live object     — newly dead; deduct from n_live_words, convert
-                                to free node, coalesce with previous if adjacent.
-     marked live object       — survives; clear mark bit for next cycle.
-   rebuilds h.free from scratch each collection. *)
 (** @brief Performs a linear scan of the entire slab to reclaim memory. It 
            identifies unmarked objects, converts them into free nodes, and 
            performs immediate coalescing by merging adjacent dead blocks 
@@ -97,8 +87,8 @@ let sweep_heap (st : vm_state) : unit =
     let header = h.slab.{!i} in
     let size   = Nativeint.to_int h.slab.{!i + 1} in
 
-    if Heap.hdr_is_free header then begin
-      (* pre-existing free node: coalesce into free list, no live_words change *)
+    if Heap.hdr_is_free header then (
+      (* free node: coalesce into free list *)
       (match h.free with
       | (prev_off, prev_sz) :: rest when prev_off + prev_sz = !i ->
         let merged = prev_sz + size in
@@ -107,8 +97,8 @@ let sweep_heap (st : vm_state) : unit =
       | _ ->
         h.free <- (!i, size) :: h.free)
 
-    end else if not (Heap.hdr_is_marked header) then begin
-      (* newly dead live object: deduct its words and add to free list *)
+    ) else if not (Heap.hdr_is_marked header) then (
+      (* dead live object: deduct its words and add to free list *)
       h.n_live_words <- h.n_live_words - size;
       h.slab.{!i} <- Heap.free_node_hdr;
       (match h.free with
@@ -119,15 +109,15 @@ let sweep_heap (st : vm_state) : unit =
       | _ ->
         h.free <- (!i, size) :: h.free)
 
-    end else begin
+    ) else (
       (* live: clear mark bit for next cycle *)
       h.slab.{!i} <- Heap.hdr_clear_mark header
-    end;
+    );
 
     i := !i + size
   done
   
-(** @brief The high-level entry point for a garbage collection cycle. It 
+(** @brief Entry point for a garbage collection cycle. It 
            coordinates the marking of the heap and string table, followed 
            by the sweeping of the slab and the parallel string array.
     @param st The global VM state to be collected. *)

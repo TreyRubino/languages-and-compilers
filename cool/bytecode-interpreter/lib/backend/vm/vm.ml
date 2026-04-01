@@ -13,15 +13,13 @@ open Alloc
 open Stack
 open Ir
 
-
 (** @brief Orchestrates the complete Virtual Machine lifecycle, from memory 
            initialization to final bytecode execution. It instantiates the 
            runtime state, allocates the 'Main' object on the heap, and 
            sets up the initial call frame for the entry point.
     @param ir The complete intermediate representation (IR) of the program, 
               including the class hierarchy and method table.
-    @return The final COOL value resulting from the program's execution, 
-            typically the result of the main() method. *)
+    @return The final COOL value resulting from the program's execution. *)
 let execute (ir : Ir.ir) : value =
   let st            = Runtime.create_vm ir in
   let entry_m       = ir.methods.(ir.entry_method) in

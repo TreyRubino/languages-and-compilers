@@ -108,11 +108,11 @@ Operational correctness was validated by running compiled programs through the
 VM and comparing output against the Stanford COOL reference compiler. The
 `arith.cl` program validated arithmetic, negation, conditionals, loops,
 let-bindings, static dispatch, and case expressions across a five-class
-hierarchy with mutual method calls. The `hs.cl` program — the most demanding
-test — exercises a four-class mutual inheritance ring (`Bazz`, `Foo`, `Razz`,
-`Bar`) in which every class's attribute initializers allocate objects of
-related types, including case expressions on `self` that evaluate to new
-instances of sibling classes. This program exposed three distinct code
+hierarchy with mutual method calls. The `hs.cl` program exercises a four-class 
+mutual inheritance ring (`Bazz`, `Foo`, `Razz`,`Bar`) in which every class's 
+attribute initializers allocate objects of related types, including case expressions 
+on `self` that evaluate to new instances of sibling classes. 
+This program exposed three distinct code
 generation bugs: the `n_locals = 0` hardcoding in constructors, the parent
 constructor chaining that caused infinite re-entrant construction, and the
 `Object.parent_id` self-cycle. Each was isolated through IR dump analysis and
@@ -131,3 +131,10 @@ rejected earlier in the pipeline.
 
 [2] A. V. Aho, M. S. Lam, R. Sethi, and J. D. Ullman, Compilers: Principles, Techniques,
 and Tools, 2nd ed., ch. 6, "Intermediate-Code Generation," Pearson/Addison-Wesley, 2006.
+
+[4] "Code generation (compiler)," Wikipedia, The Free Encyclopedia, Apr. 2026. [Online]. 
+Available: https://en.wikipedia.org/wiki/Code_generation_compiler
+
+[3] R. Nystrom, Crafting Interpreters, 1st ed. Genever Benning, 2021.
+
+Note: Grammarly was used in conjunction to write this document.

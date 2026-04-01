@@ -16,6 +16,7 @@ open Error
 (** @brief Processes raw string data to interpret escape sequences such as 
            newlines and tabs. This ensures that strings stored in the IR 
            format are printed correctly to the standard output.
+           Taken directly from the tree-walk interpter's interpreter
     @param s The raw string containing potential escape characters.
     @return A formatted string with escaped characters converted to their 
             literal equivalents. *)
@@ -86,7 +87,7 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
     let i =
       match frame.locals.(0) with
       | VInt i -> i
-      | _      -> Error.vm "0" "out_int expected Int"
+      | _      -> Error.vm "0" "IO.out_int expected Int"
     in
     Printf.printf "%d" i;
     flush stdout;
@@ -96,7 +97,7 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
     let s =
       match frame.locals.(0) with
       | VPtr p -> get_string st p
-      | _      -> Error.vm "0" "out_string expected String"
+      | _      -> Error.vm "0" "IO.out_string expected String"
     in
     Printf.printf "%s" (unescape s);
     flush stdout;
@@ -123,7 +124,7 @@ let maybe_handle_builtin (st : vm_state) (frame : frame) : value option =
     let arg  =
       match frame.locals.(0) with
       | VPtr p -> get_string st p
-      | _      -> Error.vm "0" "concat expected String argument"
+      | _      -> Error.vm "0" "String.concat expected String argument"
     in
     Some (VPtr (Alloc.allocate_string st (base ^ arg)))
 

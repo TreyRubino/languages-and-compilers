@@ -55,3 +55,5 @@ including offsets for attributes, dispatch-table slots, and method-local frame
 sizes. The semantic environment uses hash tables for fast class and method
 lookup and stores both user-defined and internal method bodies for later
 lowering.
+
+Note: Grammarly was used in conjunction to write this document.

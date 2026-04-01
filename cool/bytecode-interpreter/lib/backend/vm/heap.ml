@@ -20,7 +20,7 @@ let tag_ptr     = 3n
 let tag_str_idx = 4n
 let tag_mask    = 7n
 
-let free_node_hdr = 2n    (* header for free blocks, bit 1 set *)
+let free_node_hdr = 2n    (* header for free blocks, bit 1 (Free) set *)
 
 (** @brief Encodes a COOL value into a 64-bit tagged word by shifting the value left by 3 bits 
            and injecting the type tag into the least significant bits.
@@ -48,7 +48,7 @@ let decode (w : nativeint) : value =
     | _ -> VVoid
 
 (** @brief Encodes a raw integer index for the parallel string table into a tagged word 
-           using the specific StrIdx tag (4).
+           using the specific StrIdx tag 4.
     @param i The integer index representing a slot in the string table.
     @return A nativeint word containing the shifted index and tag 4. *)
 let encode_str_idx (i : int) : nativeint =
@@ -62,14 +62,14 @@ let decode_str_idx (w : nativeint) : int =
   Nativeint.to_int (Nativeint.shift_right_logical w 3)
 
 (** @brief Validates if a slab word is a String Index by checking if the 
-           bottom 3 bits match the StrIdx tag (4).
+           bottom 3 bits match the StrIdx tag 4.
     @param w The word to inspect.
     @return True if the word is a string table reference. *)
 let is_str_idx (w : nativeint) : bool =
   Nativeint.logand w tag_mask = tag_str_idx
 
 (** @brief Validates if a slab word is a Heap Pointer by checking if the 
-           bottom 3 bits match the VPtr tag (3).
+           bottom 3 bits match the VPtr tag 3.
     @param w The word to inspect.
     @return True if the word represents a memory offset in the slab. *)
 let is_ptr (w : nativeint) : bool =
@@ -89,7 +89,7 @@ let make_header (cid : int) : nativeint =
 let hdr_class_id (h : nativeint) : int =
   Nativeint.to_int (Nativeint.shift_right_logical h 2)
 
-(** @brief Tests the least significant bit (bit 0) of the header to determine 
+(** @brief Tests the least significant bit of the header to determine 
            if the object has been visited during the GC mark phase.
     @param h The object's header word.
     @return True if the mark bit is 1. *)
@@ -113,7 +113,7 @@ let hdr_clear_mark (h : nativeint) : nativeint =
 (** @brief Inspects bit 1 of the header to determine if the slab block is 
            part of the free list rather than a live COOL object.
     @param h The word at the potential header offset.
-    @return True if the free-node sentinel bit is set. *)
+    @return True if the free-node bit is set. *)
 let hdr_is_free (h : nativeint) : bool =
   Nativeint.logand h 2n <> 0n
 
@@ -133,7 +133,7 @@ let class_id (h : heap) (p : int) : int =
 let total_size (h : heap) (p : int) : int =
   Nativeint.to_int h.slab.{p + 1}
 
-(** @brief Calculates the field offset (p + 2 + n) and decodes the resulting 
+(** @brief Calculates the field offset and decodes the resulting 
            tagged word into an OCaml value for the VM interpreter.
     @param h The heap record.
     @param p The starting word offset of the object.
@@ -143,7 +143,7 @@ let get_field (h : heap) (p : int) (n : int) : value =
   decode h.slab.{p + 2 + n}
 
 (** @brief Encodes an OCaml value and writes it to the slab at the calculated 
-           field offset (p + 2 + n).
+           field offset.
     @param h The heap record.
     @param p The starting word offset of the object.
     @param n The zero-indexed field position.
@@ -151,16 +151,16 @@ let get_field (h : heap) (p : int) (n : int) : value =
 let set_field (h : heap) (p : int) (n : int) (v : value) : unit =
   h.slab.{p + 2 + n} <- encode v
 
-(** @brief Specialized accessor for String objects that extracts the string 
-           table index from the first field slot (p + 2).
+(** @brief Accessor for String objects that extracts the string 
+           table index from the first field slot.
     @param h The heap record.
     @param p The word offset of the String object.
     @return The raw integer index into the parallel string array. *)
 let get_str_field (h : heap) (p : int) : int =
   decode_str_idx h.slab.{p + 2}
 
-(** @brief Specialized setter for String objects that encodes and writes a 
-           string table index into the first field slot (p + 2).
+(** @brief Setter for String objects that encodes and writes a 
+           string table index into the first field slot.
     @param h The heap record.
     @param p The word offset of the String object.
     @param idx The integer index to store. *)
@@ -181,7 +181,7 @@ let mark_obj (h : heap) (p : int) : unit =
 let is_marked (h : heap) (p : int) : bool =
   hdr_is_marked h.slab.{p}
 
-(** @brief Low-level initializer that writes the header and size words, zeros 
+(** @brief Initializer that writes the header and size words, zeros 
            out all fields to VVoid, and updates the live word counter for GC tracking.
     @param h The heap record.
     @param off The slab offset where the block starts.
@@ -196,7 +196,7 @@ let write_object (h : heap) (off : int) (cid : int) (size : int) : unit =
   done
 
 (** @brief Compares the current count of words occupied by live objects against 
-            the configured threshold to determine if a collection cycle is due.
+            the configured threshold (currently 75% heap usage) to determine if a collection cycle is due.
     @param h The heap record.
     @return True if n_live_words exceeds or equals the threshold. *)
 let needs_gc (h : heap) : bool =
@@ -223,15 +223,15 @@ let alloc (h : heap) (cid : int) (n_fields : int) : int =
   (match search [] h.free with
   | Some (off, sz) ->
     let rem = sz - size in
-    if rem >= 2 then begin
-      (* split the slab, mark the remainder as a free node.
+    if rem >= 2 then (
+      (* split the slab: mark the remainder as a free node.
          the remainder is not counted in n_live_words, only live
          objects are. write_object handles the accounting. *)
       let r = off + size in
       h.slab.{r}     <- free_node_hdr;
       h.slab.{r + 1} <- Nativeint.of_int rem;
       h.free <- (r, rem) :: h.free
-    end;
+    );
     write_object h off cid size;
     off
   | None ->

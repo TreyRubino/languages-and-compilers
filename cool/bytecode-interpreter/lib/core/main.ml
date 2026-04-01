@@ -20,7 +20,7 @@ let read_file filename =
   close_in ic;
   s
 
-(** @brief The master execution routine for the COOL compiler and VM. 
+(** @brief The main execution routine for the COOL compiler and VM. 
            It parses command-line arguments to decide between "Bootstrap" 
            mode (loading .cl-type files) or "Standard" mode (lexing and 
            parsing .cl files). It then pipes the resulting semantic 

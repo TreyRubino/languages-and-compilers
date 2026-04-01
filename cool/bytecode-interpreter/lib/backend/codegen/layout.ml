@@ -1,11 +1,11 @@
 (**
 @file   layout.ml
-@brief  Tools for generating readable dumps of class layouts, dispatch
-        tables, constants, and bytecode.
+@brief  Implements logic for object memory layouts and dispatch tables, 
+        including inheritance linearalization and stack frame allocation 
+        for local variables.
 @author Trey Rubino
 @date   11/30/2025
 *)
-
 
 open Semantics
 
@@ -90,7 +90,7 @@ type frame_layout = {
   local_count : int ref;
 }
 
-(** @brief Initializes the layout for a method's activation record (call frame). 
+(** @brief Initializes the layout for a method's activation record. 
            It maps formal parameters to initial local slots and prepares 
            counters for additional local variables allocated during execution.
     @param formals The list of method parameters (name and type).
@@ -106,9 +106,8 @@ let create_frame_layout (formals : (Ast.id * Ast.cool_type) list) : frame_layout
     local_count = ref 0;
   }
 
-(** @brief Reserves a new slot in the current call frame for a local variable 
-           (e.g., from a 'let' binding or 'case' branch) and updates the 
-           frame's local count.
+(** @brief Reserves a new slot in the current call frame for a local variable
+          and updates the frame's local count.
     @param fl The current frame layout being constructed.
     @param name The name of the local variable to allocate.
     @return The integer index of the newly assigned stack slot. *)

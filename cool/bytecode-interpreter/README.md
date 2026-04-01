@@ -104,3 +104,5 @@ The project includes automated scripts for validation. Running
 `make delta` performs a differential analysis against reference outputs. A
 convenience rule, `make run`, rebuilds the system and executes the standard
 test case. 
+
+Note: Grammarly was used in conjunction to write this document.

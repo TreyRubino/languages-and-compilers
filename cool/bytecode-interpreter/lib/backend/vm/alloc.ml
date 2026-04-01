@@ -6,7 +6,7 @@
         threshold. Integer and boolean results are unboxed values and never
         allocated here. String objects are created via allocate_string.
 @author Trey Rubino
-@date   11/30/2025
+@date   02/15/2026
 *)
 
 open Runtime
@@ -44,10 +44,10 @@ let allocate_object (st : vm_state) (class_id : int) : int =
     else Array.length cls.attributes
   in
   let p = Heap.alloc st.heap class_id n_fields in
-  if cls.name = "String" then begin
+  if cls.name = "String" then (
     let empty = Strings.intern st.strings "" in
     Heap.set_str_field st.heap p empty
-  end;
+  );
   p
 
 (** @brief Creates a new COOL String object on the slab and populates its 
@@ -62,25 +62,4 @@ let allocate_string (st : vm_state) (s : string) : int =
   let p   = Heap.alloc st.heap str_cid 1 in
   let idx = Strings.intern st.strings s in
   Heap.set_str_field st.heap p idx;
-  p
-
-(** @brief A high-level routine that allocates a COOL object and immediately 
-           queues its constructor (__init) on the call stack. This ensures 
-           that the object's attributes are initialized according to the 
-           class definition before it is used.
-    @param st The current global VM state.
-    @param class_id The identifier for the class to instantiate and initialize.
-    @return The slab word offset of the object awaiting initialization. *)
-let allocate_and_init (st : vm_state) (class_id : int) : int =
-  let p   = allocate_object st class_id in
-  let cls = st.ir.classes.(class_id) in
-  let init_name = "__init_" ^ cls.name in
-  let rec find_init i =
-    if i >= Array.length st.ir.methods then
-      Error.vm "0" "missing constructor for %s" cls.name
-    else if st.ir.methods.(i).name = init_name then i
-    else find_init (i + 1)
-  in
-  let init_mid = find_init 0 in
-  Stack.push_frame st p init_mid [];
   p

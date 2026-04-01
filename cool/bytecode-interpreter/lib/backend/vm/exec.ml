@@ -5,7 +5,8 @@
         occurs for arithmetic, comparison, or boolean operations. Field
         access, dispatch, and new-object instructions go through the slab
         allocator and heap accessors. The GC is triggered implicitly by
-        Alloc.allocate_object whenever the bump pointer reaches threshold.
+        Alloc.allocate_object whenever the bump pointer reaches threshold of
+        75% heap allocation.
 @author Trey Rubino
 @date   11/30/2025
 *)
@@ -31,52 +32,27 @@ let get_line_number (f : frame) : string =
   ) m.line_map;
   if !best_line = 0 then "unknown" else string_of_int !best_line
 
-(** @brief Ensures an integer fits within a 32-bit signed range, mimicking 
-           standard COOL/MIPS behavior within the OCaml environment.
-    @param x The native OCaml integer to convert.
-    @return A 32-bit consistent integer value. *)
 let to_int32 (x : int) : int =
   Int32.to_int (Int32.of_int x)
 
-(** @brief Validates that a VM value is an unboxed integer (VInt). If the 
-           value is VVoid or a different type, it raises a runtime error.
-    @param v The COOL value to inspect.
-    @param f The current frame for error reporting context.
-    @return The raw integer value if successful. *)
 let expect_int (v : value) (f : frame) : int =
   match v with
   | VInt i -> i
   | VVoid  -> Error.vm (get_line_number f) "expected Int (void)"
   | _      -> Error.vm (get_line_number f) "expected Int"
 
-(** @brief Validates that a VM value is an unboxed boolean (VBool). If the 
-           value is VVoid or a different type, it raises a runtime error.
-    @param v The COOL value to inspect.
-    @param f The current frame for error reporting context.
-    @return The raw boolean value if successful. *)
 let expect_bool (v : value) (f : frame) : bool =
   match v with
   | VBool b -> b
   | VVoid   -> Error.vm (get_line_number f) "expected Bool (void)"
   | _       -> Error.vm (get_line_number f) "expected Bool"
 
-(** @brief Validates that a VM value is a heap pointer (VPtr). If the value 
-           is VVoid, it triggers a "dispatch to void" runtime error.
-    @param v The COOL value to inspect.
-    @param f The current frame for error reporting context.
-    @param ctx A descriptive string for the operation (e.g., "GET_ATTR") for error reporting.
-    @return The slab word offset if successful. *)
 let expect_ptr (v : value) (f : frame) (ctx : string) : int =
   match v with
   | VPtr p -> p
   | VVoid  -> Error.vm (get_line_number f) "dispatch on void" ctx
   | _      -> Error.vm (get_line_number f) "%s: expected object" ctx
 
-(** @brief Maps an IR-level literal (Int, Bool, String) to its operational 
-           runtime value. String literals are automatically allocated on 
-           the slab and interned in the parallel string table.
-    @param st The current global VM state.
-    @return A function that transforms an Ir.literal into a Runtime.value. *)
 let const_of_lit (st : vm_state) : Ir.literal -> value = function
   | LInt i    -> VInt i
   | LBool b   -> VBool b
@@ -151,7 +127,6 @@ let run (st : vm_state) : value =
       (match instr.arg with
       | IntArg off ->
         let p = expect_ptr (Stack.pop_val st) frame "GET_ATTR" in
-        (* bytecode uses offset+1 to skip the old tag slot; field index = off-1 *)
         Stack.push_val st (Heap.get_field st.heap p (off - 1));
         loop ()
       | _ ->
@@ -263,7 +238,7 @@ let run (st : vm_state) : value =
             let sb = st.strings.data.(Heap.get_str_field st.heap b) in
             sa = sb
           else
-            (* object equality is pointer (identity) equality *)
+            (* object equality is pointer equality *)
             a = b
         | _, _ -> false
       in

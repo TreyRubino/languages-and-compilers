@@ -21,7 +21,7 @@ type attr_impl = {
 }
 
 (** @brief Distinguishes between methods defined in COOL source code and 
-           "Internal" methods provided by the runtime (like IO or String 
+           Internal methods provided by the runtime (like IO or String 
            primitives).
     @param Internal A built-in routine with a return type and a qualified name.
     @param User A method containing a standard COOL AST expression. *)

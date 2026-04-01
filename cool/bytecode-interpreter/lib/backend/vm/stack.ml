@@ -2,8 +2,7 @@
 @file   stack.ml
 @brief  Implements the VM call stack and value stack, supporting frame
         creation, argument installation, local access, and stack-value
-        operations. self_ptr is a raw slab word offset replacing the old
-        self_obj direct OCaml reference.
+        operations.
 @author Trey Rubino
 @date   11/30/2025
 *)
@@ -44,7 +43,6 @@ let pop_frame (st : vm_state) : frame =
   | [] ->
     Error.vm "0" "call stack underflow"
 
-
 (** @brief Retrieves the current active frame from the top of the call stack 
            without removing it.
     @param st The current global VM state.
@@ -75,7 +73,6 @@ let set_local (st : vm_state) (slot : int) (v : value) : unit =
   | []     -> Error.vm "0" "no active frame"
 
 (** @brief Pushes a COOL value onto the global operand stack (value stack) 
-           for use in upcoming bytecode instructions.
     @param st The current global VM state.
     @param v The value to be added to the top of the stack. *)
 let push_val (st : vm_state) (v : value) : unit =

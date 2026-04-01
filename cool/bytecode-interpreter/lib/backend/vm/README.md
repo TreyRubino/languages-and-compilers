@@ -41,8 +41,6 @@ Dr. Schwesinger
   installing the entry method frame, and starting program execution. The Main
   object is allocated without pushing an init frame; `main()` invokes
   `__init_Main` itself via its lowered prologue.  
-- `ir.ml`: Shared intermediate representation definitions used by the VM for
-  method lookup, dispatch tables, and class/attribute layout.  
 
 ## Overview  
 The Virtual Machine executes the intermediate representation produced by the
@@ -83,6 +81,8 @@ object layout at word offset p:
   slab[p+2 .. p+1+n]  fields  encoded as tagged words
 
 slab field word encoding:
+  lsl : logic shift left
+
   0n              = VVoid
   (n lsl 3) | 1n  = VInt n
   (b lsl 3) | 2n  = VBool b
@@ -91,7 +91,7 @@ slab field word encoding:
 ```
 
 Allocation uses a bump pointer with a first-fit free list for reclaimed
-blocks. The GC fires every 65 536 allocations; after each collection the
+blocks. The GC fires after 75% heap allocation; after each collection the
 counter resets to zero so the trigger does not permanently refire after the
 bump pointer's high-water mark first reaches capacity. The slab capacity
 (1M words) is the hard out-of-memory boundary.
@@ -107,7 +107,7 @@ of its content, preventing uninitialized slots from being incorrectly freed.
 
 ### Call Stack  
 The operand stack, frame list, and local arrays remain in OCaml constructs
-intentionally. These structures are ephemeral and stack-disciplined — they exist
+intentionally. These structures are ephemeral - they exist
 only for the duration of a method call and unwind deterministically on return,
 mirroring the role of the hardware stack in a native runtime. They carry no GC
 pressure and require no collection. Each frame carries `self_ptr : int`, a word
@@ -154,9 +154,8 @@ string table), allocating an instance of the program's Main class on the slab
 without pushing an init frame, then pushing the entry method (`main()`) frame
 directly. The `main()` method's lowered prologue calls `__init_Main` itself,
 ensuring the constructor fires exactly once. An earlier design pushed an init
-frame from `vm.ml` via `allocate_and_init` and then pushed `main()` on top,
-causing `__init_Main` to run twice — once from `main()`'s prologue and once
-from the frame queued by `vm.ml` when `main()` returned. The fix is to use
+frame from `vm.ml` via a function `allocate_and_init` and then pushed `main()` on top,
+causing `__init_Main` to run twice. The fix was to use
 `allocate_object` in `vm.ml` and let `main()` own the constructor call.
 
 The interpreter loop fetches the next instruction, increments the program
@@ -178,26 +177,14 @@ Testing for the VM was conducted through a combination of direct execution
 against the COOL reference interpreter, targeted regression tests for
 discovered bugs, and a dedicated GC stress test.
 
-The `arith.cl` program served as the primary correctness benchmark. It
-exercises a five-class hierarchy with arithmetic, negation, integer comparison,
-conditionals, while loops, let-bindings, user-defined methods with formals,
-dynamic dispatch, static dispatch (`@`-syntax), and case expressions with all
-five branch types. Output was compared line-for-line against the Stanford
-reference compiler using the regression script.
-
-The `hs.cl` program — the most comprehensive test — exercises mutual class
+The `hs.cl` program exercises mutual class
 initialization across four classes that inherit in a ring. Every class
 allocates instances of related classes inside attribute initializers, requiring
 the VM to handle deeply recursive construction without re-entrant looping. This
 test exposed three bugs in sequence: the frame array out-of-bounds crash from
 `n_locals = 0` in constructors, the infinite construction loop from parent
 constructor chaining, and the `OP_IS_SUBTYPE` infinite loop from
-`Object.parent_id = 0`. Each was reproduced, isolated, and fixed before the
-next was discovered. The final output of `hs.cl` matches the reference
-compiler exactly. A separate execution bug — `__init_Main` running twice,
-causing all attribute initializer side effects to appear twice in the output —
-was isolated to `vm.ml` pushing an extra init frame via `allocate_and_init`
-and fixed by switching to `allocate_object`.
+`Object.parent_id = 0`. 
 
 The GC stress test (`gc_test.cl`) validates the mark-and-sweep collector
 directly. It allocates 100 000 `Box` objects in a loop, keeping only the most
@@ -211,16 +198,6 @@ program crashes or prints a wrong value; if the sweep phase fails to reclaim
 dead objects the slab exhausts before the loop completes. The test passing
 confirms both phases are correct.
 
-A separate sweep correctness test was applied to the parallel string table.
-The `strings.ml` sweep originally used `Hashtbl.mem tbl data.(i)` to
-determine whether a slot was allocated, which caused uninitialized slots
-containing the empty string `""` to be confused with the canonical slot for
-`""` after it was interned, corrupting the deduplication table. The fix
-changed the check to `Hashtbl.find_opt tbl data.(i) = Some i`, which only
-reclaims a slot when the table confirms it as the canonical owner of its
-content. This was validated by running programs that intern and discard many
-strings over multiple GC cycles.
-
 ## References  
 [1] "The Cool Reference Manual," Alex Aiken (et al.), Stanford University, The COOL Language Project, Jan. 2011.  
 [Online]. Available: https://theory.stanford.edu/~aiken/software/cool/cool-manual.pdf
@@ -230,3 +207,13 @@ and Tools, 2nd ed., ch. 7, "Run-Time Environments," Pearson/Addison-Wesley, 2006
 
 [3] R. Jones, A. Hosking, and E. Moss, The Garbage Collection Handbook: The Art of 
 Automatic Memory Management, 2nd ed., Chapman and Hall/CRC, Jul. 2023.
+
+[4] "Slab allocation," Wikipedia, The Free Encyclopedia, Mar. 2026. [Online]. 
+Available: https://en.wikipedia.org/wiki/Slab_allocation
+
+[5] R. Nystrom, Crafting Interpreters, 1st ed. Genever Benning, 2021.
+
+[6] "First Fit allocation in Operating Systems," GeeksforGeeks. [Online]. 
+Available: https://www.geeksforgeeks.org/operating-systems/first-fit-allocation-in-operating-systems/
+
+Note: Grammarly was used in conjunction to write this document.

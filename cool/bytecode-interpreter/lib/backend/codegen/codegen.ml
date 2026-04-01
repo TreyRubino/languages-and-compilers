@@ -1,11 +1,9 @@
 (**
 @file   codegen.ml
-@brief  Tools for generating readable dumps of class layouts, dispatch
-        tables, constants, and bytecode.
+@brief  Entre point for the Code Generation phase of the pipeline.
 @author Trey Rubino
 @date   11/30/2025
 *)
-
 
 open Semantics
 open Gen
@@ -30,7 +28,7 @@ let rec depth env cname =
 
 (** @brief The primary entry point for IR generation. It orchestrates class 
            ID assignment, generates constructor stubs, scans for method 
-           signatures, and lowers the high-level AST into bytecode.
+           signatures, and lowers the AST into bytecode.
     @param env The validated semantic environment from the previous compiler phase.
     @return A complete Ir.ir record ready for the Virtual Machine. *)
 let emit (env : Semantics.semantic_env) : Ir.ir =

@@ -5,10 +5,6 @@
 @date   11/15/2025
 *)
 
-
-(** @brief A structured error record used to track the context of a failure. 
-           It captures the specific compiler or runtime phase, the source 
-           location (or PC), and the error message. *)
 type t = {
   phase : string;
   line  : string;
@@ -19,7 +15,6 @@ type t = {
            This allows the compiler to bail out of a specific phase and 
            report the error at the top level. *)
 exception E of t
-
 
 (** @brief Formats and raises a phase-specific error. It uses OCaml's [ksprintf] 
            to support a variable number of formatting arguments.
@@ -32,7 +27,7 @@ let raisef ~phase ~line fmt =
   ) fmt
 
 (** @brief Prints a formatted error message to standard output, adhering to 
-           the standard "ERROR: line: phase: message" format.
+           the standard "ERROR: line: phase: message" format as per the COOL spec.
     @param record The error record to be printed. *)
 let print { phase; line; msg } = 
   Printf.printf "ERROR: %s: %s: %s\n" line phase msg
@@ -57,21 +52,12 @@ let parser lexbuf =
     msg = Printf.sprintf "syntax error near %s" lexeme;
   }
 
-(** @brief Helper for reporting errors during the Semantic Analysis / Type-Checking phase.
-    @param loc The source code location string.
-    @param fmt The format string for the type error. *)
 let checker loc fmt =
   raisef ~phase:"Type-Check" ~line:loc fmt
 
-(** @brief Helper for reporting errors during the Bytecode Generation phase.
-    @param loc The source code location string.
-    @param fmt The format string for the codegen error. *)
 let codegen loc fmt =
   raisef ~phase:"Codegen" ~line:loc fmt
 
-(** @brief Helper for reporting runtime exceptions during VM execution.
-    @param pc The string representation of the current Program Counter.
-    @param fmt The format string for the VM exception. *)
 let vm pc fmt = 
   raisef ~phase:"Exception" ~line:pc fmt
 

@@ -7,7 +7,6 @@
 @date   11/15/2025
 *)
 
-
 (** @brief Defines the full set of opcodes supported by the COOL Virtual Machine. 
            These operations cover stack manipulation, arithmetic, control flow, 
            object creation, and both dynamic and static method dispatch. *)
@@ -90,7 +89,7 @@ type operand =
   | OffsetArg of int
 
 (** @brief A single executable unit within the VM, pairing an operation 
-           (opcode) with its necessary metadata (operand). *)
+           with its necessary metadata (operand). *)
 type instruction = {
   op : opcode;
   arg: operand;

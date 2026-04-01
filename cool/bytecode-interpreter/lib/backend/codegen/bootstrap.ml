@@ -1,43 +1,28 @@
 (**
-@file   debug.ml
-@brief  Tools for generating readable dumps of class layouts, dispatch
-        tables, constants, and bytecode.
+@file   bootstrap.ml
+@brief  Reads in .cl-type file from the reference compiler and builds in-memory
+        semantic env for the lowering pipeline. Only executed with the '-b' cli
+        argument.
 @author Trey Rubino
 @date   11/30/2025
 *)
 
-
 open Ast
 open Semantics
 
-(** @brief A temporary representation of a method's implementation used during 
-           the parsing phase before formal semantic validation is complete.
-    @param r_definer The name of the class where this method was originally defined.
-    @param r_formals The list of formal parameter names.
-    @param r_body The AST or internal body of the method. *)
 type raw_method_impl = {
   r_definer : string;
   r_formals : string list;
   r_body    : method_body;
 }
 
-(** @brief Parses a string into a formal static type, distinguishing between 
-           standard class names and the special 'SELF_TYPE' identifier.
-    @param s The string identifier from the input stream.
-    @return Some(type) if valid, or None if the type cannot be determined. *)
 let parse_static_type s =
   if s = "SELF_TYPE" then Some (SELF_TYPE s)
   else Some (Class s)
 
-(** @brief Utility function to generate a list of integers from k down to 1. 
-           Typically used to iterate through numbered entries in the input stream.
-    @param k The number of elements to generate.
-    @return A list containing integers [k; k-1; ...; 1]. *)
+(* taking from Weisely Wiemer's youtube series *)
 let rec range k = if k <= 0 then [] else k :: (range (k - 1))
 
-(** @brief Reads a single line from the input channel, stripping the newline character.
-    @param ic The input channel linked to the serialized semantic data.
-    @return The string contents of the line. *)
 let read ic = input_line ic
 
 (** @brief Higher-order function that reads a list of items from the input channel. 
@@ -49,17 +34,13 @@ let read_list ic worker =
   let k = int_of_string (read ic) in
   List.map (fun _ -> worker ic) (range k)
 
-(** @brief Reads a pair of lines representing a source code location and an identifier name.
-    @param ic The input channel.
-    @return A tuple of (location, name). *)
 let read_id ic =
   let loc = read ic in
   let name = read ic in
   (loc, name)
 
 (** @brief Recursively reconstructs an AST expression from the serialized input stream. 
-           It dispatches based on operation tags (e.g., "assign", "if", "dynamic_dispatch") 
-           to build the complex tree structure.
+           It dispatches based on operation tags to build the tree structure.
     @param ic The input channel.
     @param eloc The source location of the expression.
     @return A fully formed expr record with its associated static type. *)
@@ -150,11 +131,6 @@ let rec read_expr_from ic eloc : expr =
   in
   { loc = eloc; expr_kind = ekind; static_type = parse_static_type st }
 
-
-(** @brief Entry point for reading an expression; fetches the location line 
-           before calling read_expr_from.
-    @param ic The input channel.
-    @return The reconstructed expression. *)
 and read_expr ic =
   let eloc = read ic in
   read_expr_from ic eloc
@@ -250,9 +226,6 @@ let read_parent_map ic =
   List.iter (fun (c, p) -> Hashtbl.replace tbl c p) pairs;
   tbl
 
-(** @brief Reads a method formal parameter, consisting of its name and type identifier.
-    @param ic The input channel.
-    @return A tuple of (id, type_id). *)
 let read_formal ic =
   let fname = read_id ic in
   let ftype = read_id ic in
@@ -301,10 +274,10 @@ let read_cool_class ic =
     @return The full list of parsed classes. *)
 let read_program ic = read_list ic read_cool_class
 
-(** @brief The primary loader for the Codegen environment. It consumes the 
-           serialized output of the Semantic Analyzer to build a 'semantic_env'. 
-           This environment contains all the mapping and AST data required to 
-           generate bytecode and layout the heap.
+(** @brief The primary loader for the Codegen environment durning bootstrap mode. 
+          It consumes the serialized output of the Semantic Analyzer to build a 
+          'semantic_env'. This environment contains all the mapping and AST data 
+          required to generate bytecode and layout the heap.
     @param ic The input channel containing the semantic data.
     @return A semantic_env populated with maps and the program AST. *)
 let load_bootstrap_env (ic : in_channel) : semantic_env =

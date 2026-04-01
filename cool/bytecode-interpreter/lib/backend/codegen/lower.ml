@@ -38,12 +38,6 @@ let dispatch_slot env cname mname =
   in
   find 0 meths
 
-(** @brief Calculates the inheritance depth of a class by recursively traversing 
-           the parent map until it reaches 'Object'. This is used to ensure 
-           parent classes are processed and laid out before their children.
-    @param env The semantic environment containing the hierarchy.
-    @param cname The name of the class to measure.
-    @return The integer depth (0 for Object). *)
 let rec depth env cname = 
   if cname = "Object" then 0 
   else 
@@ -53,11 +47,6 @@ let rec depth env cname =
     in
     1 + depth env parent
 
-(** @brief Maps a semantic attribute definition to an IR-level attribute 
-           record with its fixed word-offset.
-    @param a The attribute implementation.
-    @param offset The zero-indexed position in the object's field layout.
-    @return A finalized Ir.attr_info record. *)
 let lower_attr a offset =
   { name = a.aname; offset }
 
@@ -355,7 +344,7 @@ let rec lower_expr (ctx : lower_ctx) (expr : Ast.expr) =
     )
 
   | SelfDispatch ((mloc, mname), args) ->
-    List.iter (fun a -> lower_expr ctx a) args;  (* push args first *)
+    List.iter (fun a -> lower_expr ctx a) args;       (* push args first *)
     emit_op ctx.buf OP_GET_SELF mloc;                (* receiver on top *)
     let slot = dispatch_slot ctx.env ctx.cname mname in
     emit_op_i ctx.buf OP_DISPATCH slot mloc
@@ -432,7 +421,7 @@ let lower_constructor (st : Gen.t) (env : Semantics.semantic_env) (cname : strin
     | [] -> "0" 
   in
 
-  (* flat init: emit all inherited + own attribute initializers in linearized
+  (* flat init: emit all inherited and own attribute initializers in linearized
      order with no parent constructor calls. this avoids re-entrant construction
      when attribute initializers allocate objects of ancestor/descendant types. *)
   let all_attrs = linear_attrs env cname in
@@ -540,7 +529,7 @@ let scan_method_ids st env cname =
     )
   ) meths
 
-(** @brief The high-level driver that lowers a full class. It coordinates 
+(** @brief Driver that lowers a full class. It coordinates 
            the generation of the constructor, the translation of all methods, 
            and the assembly of class-level metadata.
     @param st The global generation state.

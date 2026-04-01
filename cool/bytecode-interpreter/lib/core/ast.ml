@@ -28,7 +28,7 @@ and cool_type = id
 and cool_class = id * (id option) * feature list
 
 (** @brief Defines a feature within a class. Features are either attributes 
-           (state) with optional initializers or methods (behavior) 
+           with optional initializers or methods (behavior) 
            with a list of formal parameters and a body expression. *)
 and feature =
 	| Attribute of id * cool_type * (expr option)

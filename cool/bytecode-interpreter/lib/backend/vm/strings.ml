@@ -34,26 +34,21 @@ let intern (st : strings) (s : string) : int =
       Hashtbl.add st.tbl s i;
       i)
 
-(** @brief Updates the GC bitmap to mark a specific string slot as reachable. 
-           This prevents the string from being reclaimed during the sweep phase.
-    @param st The global strings state.
-    @param i The slot index to be marked as live. *)
 let mark (st : strings) (i : int) : unit =
   st.live.(i) <- true
 
 (** @brief Performs a linear scan of the string table to reclaim unmarked slots. 
            It clears the string data, removes the entry from the interning hash table, 
-           and returns the index to the free list. It includes a safety check to 
-           ensure only canonical owners of string content are reclaimed.
+           and returns the index to the free list. 
     @param st The global strings state to be swept. *)
 let sweep (st : strings) : unit =
   for i = 0 to st.capacity - 1 do
     if st.live.(i) then
       st.live.(i) <- false
-    else if Hashtbl.find_opt st.tbl st.data.(i) = Some i then begin
+    else if Hashtbl.find_opt st.tbl st.data.(i) = Some i then (
       Hashtbl.remove st.tbl st.data.(i);
       st.data.(i)  <- "";
       st.free      <- i :: st.free;
       st.n_live    <- st.n_live - 1
-    end
+    )
   done
